@@ -1,10 +1,13 @@
-module Day3 exposing (distance, output, straightCos)
+module Day3 exposing (distance, firstLargerNumber, output, spiralLargerThan, straightCos)
+
+import AddingSpiral exposing (AddingSpiral)
+import Day3Input exposing (input)
 
 
 output : ( String, String )
 output =
-    ( 325489 |> distance |> toString
-    , ""
+    ( input |> distance |> toString
+    , input |> firstLargerNumber |> toString
     )
 
 
@@ -69,3 +72,26 @@ straightCos float =
             abs (0.5 - decimals)
     in
     distance * 4 - 1
+
+
+iterate : (a -> a) -> (a -> Bool) -> a -> a
+iterate next isDone current =
+    if isDone current then
+        current
+
+    else
+        iterate next isDone (next current)
+
+
+spiralLargerThan : Int -> AddingSpiral
+spiralLargerThan number =
+    let
+        isDone addingSpiral =
+            AddingSpiral.getNumber addingSpiral > number
+    in
+    iterate AddingSpiral.next isDone AddingSpiral.empty
+
+
+firstLargerNumber : Int -> Int
+firstLargerNumber =
+    spiralLargerThan >> AddingSpiral.getNumber

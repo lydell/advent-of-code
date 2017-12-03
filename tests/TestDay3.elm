@@ -1,6 +1,7 @@
 module TestDay3 exposing (..)
 
-import Day3 exposing (distance, straightCos)
+import AddingSpiral exposing (toListOfLists)
+import Day3 exposing (distance, firstLargerNumber, spiralLargerThan, straightCos)
 import Expect exposing (Expectation)
 import Fuzz
 import Test exposing (..)
@@ -110,6 +111,26 @@ suite =
                                             |> Expect.equal expected
                             )
                    )
+        , describe "adding spiral"
+            [ test "first three rings" <|
+                \_ ->
+                    toListOfLists (spiralLargerThan 930)
+                        |> Expect.equalLists
+                            [ [ 147, 142, 133, 122, 59 ]
+                            , [ 304, 5, 4, 2, 57 ]
+                            , [ 330, 10, 1, 1, 54 ]
+                            , [ 351, 11, 23, 25, 26 ]
+                            , [ 362, 747, 806, 880, 931 ]
+                            ]
+            , test "larger than 1" <|
+                \_ ->
+                    firstLargerNumber 1
+                        |> Expect.equal 2
+            , test "larger than 80" <|
+                \_ ->
+                    firstLargerNumber 80
+                        |> Expect.equal 122
+            ]
         ]
 
 
