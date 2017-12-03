@@ -1,4 +1,4 @@
-module Day3 exposing (distance, output)
+module Day3 exposing (distance, output, straightCos)
 
 
 output : ( String, String )
@@ -48,9 +48,24 @@ distance number =
             amplitude + toFloat minDistance
 
         k =
-            2 * pi / period
+            1 / period
 
         distance =
-            amplitude * cos (k * (toFloat numberIndex + xOffset)) + yOffset
+            amplitude * straightCos (k * (toFloat numberIndex + xOffset)) + yOffset
     in
     round distance
+
+
+{-| Like `cos`, but with straight lines between tops and bottoms: `/\/\/`
+Also, the period is 1 instead of 2π.
+-}
+straightCos : Float -> Float
+straightCos float =
+    let
+        decimals =
+            abs (float - toFloat (truncate float))
+
+        distance =
+            abs (0.5 - decimals)
+    in
+    distance * 4 - 1

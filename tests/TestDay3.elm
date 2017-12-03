@@ -1,9 +1,8 @@
 module TestDay3 exposing (..)
 
-import Day3 exposing (distance)
+import Day3 exposing (distance, straightCos)
 import Expect exposing (Expectation)
 import Fuzz
-import Random
 import Test exposing (..)
 
 
@@ -84,13 +83,33 @@ suite =
     describe "Day1"
         [ describe "distance" <|
             runTests distance tests1
-                ++ [ fuzz (Fuzz.intRange 1 Random.maxInt)
+                ++ [ fuzz (Fuzz.intRange 1 94906266)
                         "the bottom-right corner is always a square and has an easy-to-calculate distance"
                      <|
                         \n ->
                             distance (n ^ 2)
                                 |> Expect.equal (n - 1)
                    ]
+        , describe "straightCos" <|
+            [ fuzz (Fuzz.floatRange -(2 ^ 31 - 1) (2 ^ 31 - 1))
+                "its output is always between -1 and 1"
+              <|
+                \float ->
+                    straightCos float
+                        |> Expect.all
+                            [ Expect.atLeast -1
+                            , Expect.atMost 1
+                            ]
+            ]
+                ++ ([ ( 0, 1 ), ( 0.25, 0 ), ( 0.5, -1 ), ( 0.75, 0 ), ( 1, 1 ), ( 1.25, 0 ) ]
+                        |> List.map
+                            (\( input, expected ) ->
+                                test (toString input) <|
+                                    \_ ->
+                                        straightCos input
+                                            |> Expect.equal expected
+                            )
+                   )
         ]
 
 
