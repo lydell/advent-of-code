@@ -5,7 +5,7 @@ import Expect exposing (Expectation)
 import Test exposing (..)
 
 
-tests1 : List ( String, number )
+tests1 : List ( String, Int )
 tests1 =
     [ ( "1122", 3 )
     , ( "1111", 4 )
@@ -14,7 +14,7 @@ tests1 =
     ]
 
 
-tests2 : List ( String, number )
+tests2 : List ( String, Int )
 tests2 =
     [ ( "1212", 6 )
     , ( "1221", 0 )
