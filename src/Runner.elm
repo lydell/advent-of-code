@@ -3,6 +3,7 @@ port module Runner exposing (..)
 import Day1
 import Day2
 import Day3
+import Day4
 import Json.Decode
 
 
@@ -62,6 +63,9 @@ run day =
 
         "3" ->
             Ok Day3.output
+
+        "4" ->
+            Ok Day4.output
 
         _ ->
             Err ("Invalid day value. See the end of src/Runner.elm for valid ones. Got: " ++ day)

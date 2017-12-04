@@ -81,7 +81,7 @@ tests1 =
 
 suite : Test
 suite =
-    describe "Day1"
+    describe "Day3"
         [ describe "distance" <|
             runTests distance tests1
                 ++ [ fuzz (Fuzz.intRange 1 94906266)
