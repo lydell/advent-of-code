@@ -7,7 +7,7 @@ import Test exposing (..)
 
 suite : Test
 suite =
-    describe "Day5"
+    describe "Day6"
         [ describe "cycleThrough"
             [ test "it works" <|
                 \_ ->

@@ -6,6 +6,7 @@ import Day3
 import Day4
 import Day5
 import Day6
+import Day7
 import Json.Decode
 
 
@@ -74,6 +75,9 @@ run day =
 
         "6" ->
             Ok (Day6.output ())
+
+        "7" ->
+            Ok (Day7.output ())
 
         _ ->
             Err ("Invalid day value. See the end of src/Runner.elm for valid ones. Got: " ++ day)
