@@ -4,8 +4,8 @@ import Array
 import Day1Input exposing (captcha)
 
 
-output : ( String, String )
-output =
+output : () -> ( String, String )
+output () =
     ( toString (inverseCaptcha1 captcha)
     , toString (inverseCaptcha2 captcha)
     )

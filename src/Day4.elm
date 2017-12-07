@@ -4,8 +4,8 @@ import Day4Input exposing (input)
 import Set
 
 
-output : ( String, String )
-output =
+output : () -> ( String, String )
+output () =
     ( input |> numValid validatePassPhrase1 |> toString
     , input |> numValid validatePassPhrase2 |> toString
     )

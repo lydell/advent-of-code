@@ -58,22 +58,22 @@ run : String -> Result String ( String, String )
 run day =
     case day of
         "1" ->
-            Ok Day1.output
+            Ok (Day1.output ())
 
         "2" ->
-            Ok Day2.output
+            Ok (Day2.output ())
 
         "3" ->
-            Ok Day3.output
+            Ok (Day3.output ())
 
         "4" ->
-            Ok Day4.output
+            Ok (Day4.output ())
 
         "5" ->
             Ok (Day5.output ())
 
         "6" ->
-            Ok Day6.output
+            Ok (Day6.output ())
 
         _ ->
             Err ("Invalid day value. See the end of src/Runner.elm for valid ones. Got: " ++ day)

@@ -4,8 +4,8 @@ import AddingSpiral exposing (AddingSpiral)
 import Day3Input exposing (input)
 
 
-output : ( String, String )
-output =
+output : () -> ( String, String )
+output () =
     ( input |> distance |> toString
     , input |> firstLargerNumber |> toString
     )
