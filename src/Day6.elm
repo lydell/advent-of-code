@@ -1,4 +1,4 @@
-module Day6 exposing (cycleThrough, output)
+module Day6 exposing (..)
 
 import Day6Input exposing (input)
 import MemoryBanks exposing (MemoryBanksResult)

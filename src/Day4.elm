@@ -1,4 +1,4 @@
-module Day4 exposing (numValid, output, validatePassPhrase1, validatePassPhrase2)
+module Day4 exposing (..)
 
 import Day4Input exposing (input)
 import Set

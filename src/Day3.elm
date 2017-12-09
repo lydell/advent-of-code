@@ -1,4 +1,4 @@
-module Day3 exposing (distance, firstLargerNumber, output, spiralLargerThan, straightCos)
+module Day3 exposing (..)
 
 import AddingSpiral exposing (AddingSpiral)
 import Day3Input exposing (input)

@@ -1,4 +1,4 @@
-module Day1 exposing (inverseCaptcha1, inverseCaptcha2, output)
+module Day1 exposing (..)
 
 import Array
 import Day1Input exposing (captcha)

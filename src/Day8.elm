@@ -1,4 +1,4 @@
-module Day8 exposing (ChangeType(..), Instruction, Operator(..), Registry, evaluate, largestRegisterValue, output, parse)
+module Day8 exposing (..)
 
 import Day8Input exposing (input)
 import Dict exposing (Dict)
