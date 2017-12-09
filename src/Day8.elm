@@ -2,7 +2,6 @@ module Day8 exposing (..)
 
 import Day8Input exposing (input)
 import Dict exposing (Dict)
-import Regex exposing (HowMany(AtMost), Match, Regex)
 
 
 output : () -> ( String, String )
@@ -47,11 +46,6 @@ type alias Registry =
     }
 
 
-lineRegex : Regex
-lineRegex =
-    Regex.regex "^([a-z]+) ([a-z]+) (-?\\d+) if ([a-z]+) ([=<>!]+) (-?\\d+)$"
-
-
 parse : String -> List Instruction
 parse string =
     string
@@ -61,16 +55,8 @@ parse string =
 
 parseLine : String -> Maybe Instruction
 parseLine string =
-    string
-        |> Regex.find (AtMost 1) lineRegex
-        |> List.head
-        |> Maybe.andThen parseMatch
-
-
-parseMatch : Match -> Maybe Instruction
-parseMatch { submatches } =
-    case submatches of
-        [ Just register, Just changeTypeString, Just changeValueString, Just conditionRegister, Just operatorString, Just conditionValueString ] ->
+    case String.words string of
+        [ register, changeTypeString, changeValueString, ifKeyword, conditionRegister, operatorString, conditionValueString ] ->
             let
                 parsed =
                     ( parseChangeType changeTypeString
