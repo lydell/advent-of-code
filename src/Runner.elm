@@ -3,6 +3,7 @@ port module Runner exposing (..)
 import Day1
 import Day10
 import Day11
+import Day12
 import Day2
 import Day3
 import Day4
@@ -94,6 +95,9 @@ run day =
 
         "11" ->
             Ok (Day11.output ())
+
+        "12" ->
+            Ok (Day12.output ())
 
         _ ->
             Err ("Invalid day value. See the end of src/Runner.elm for valid ones. Got: " ++ day)
