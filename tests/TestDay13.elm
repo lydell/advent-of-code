@@ -1,6 +1,6 @@
 module TestDay13 exposing (..)
 
-import Day13 exposing (runThrough)
+import Day13 exposing (runThrough, runThroughUncaught)
 import Expect exposing (Expectation)
 import Test exposing (..)
 
@@ -21,5 +21,11 @@ suite =
                 \_ ->
                     runThrough input
                         |> Expect.equal 24
+            ]
+        , describe "runThroughUncaught"
+            [ test "it works" <|
+                \_ ->
+                    runThroughUncaught input
+                        |> Expect.equal 10
             ]
         ]

@@ -1,4 +1,4 @@
-module Firewall exposing (fromList, getSeverity, iterate, next)
+module Firewall exposing (Firewall, findUncaughtDelay, fromList, getSeverity, iterate, next)
 
 import Array exposing (Array)
 
@@ -6,7 +6,7 @@ import Array exposing (Array)
 type Firewall
     = Firewall
         { depth : Int
-        , severity : Int
+        , catches : List ( Int, Int )
         , layers : Array Layer
         }
 
@@ -32,7 +32,7 @@ fromList : List ( Int, Int ) -> Firewall
 fromList list =
     Firewall
         { depth = -1
-        , severity = 0
+        , catches = []
         , layers = makeLayers list
         }
 
@@ -84,7 +84,7 @@ makeLayersHelper ( list, array ) =
 next : Firewall -> Firewall
 next firewall =
     let
-        (Firewall { depth, severity, layers }) =
+        (Firewall { depth, catches, layers }) =
             firewall
 
         newDepth =
@@ -93,23 +93,31 @@ next firewall =
         layer =
             Array.get newDepth layers |> Maybe.withDefault Empty
 
-        layerSeverity =
+        severity =
             case layer of
                 Empty ->
-                    0
+                    Nothing
 
                 Guarded { range, pos } ->
                     if pos == 0 then
-                        newDepth * range
+                        Just (newDepth * range)
                     else
-                        0
+                        Nothing
+
+        newCatches =
+            case severity of
+                Just number ->
+                    ( newDepth, number ) :: catches
+
+                Nothing ->
+                    catches
 
         newLayers =
             Array.map nextLayer layers
     in
     Firewall
         { depth = newDepth
-        , severity = severity + layerSeverity
+        , catches = newCatches
         , layers = newLayers
         }
 
@@ -155,6 +163,39 @@ iterate firewall =
         iterate (next firewall)
 
 
+getsCaught : Firewall -> Bool
+getsCaught firewall =
+    let
+        (Firewall { depth, catches, layers }) =
+            firewall
+    in
+    if depth >= 0 && catches /= [] then
+        True
+    else if depth >= Array.length layers then
+        False
+    else
+        getsCaught (next firewall)
+
+
 getSeverity : Firewall -> Int
-getSeverity (Firewall { severity }) =
-    severity
+getSeverity (Firewall { catches }) =
+    catches
+        |> List.map Tuple.second
+        |> List.sum
+
+
+findUncaughtDelay : Firewall -> Int
+findUncaughtDelay =
+    findUncaughtDelayHelper 0
+
+
+findUncaughtDelayHelper : Int -> Firewall -> Int
+findUncaughtDelayHelper delay (Firewall firewallData) =
+    let
+        delayedFirewall =
+            Firewall { firewallData | depth = firewallData.depth - delay }
+    in
+    if getsCaught delayedFirewall then
+        findUncaughtDelayHelper (delay + 1) (Firewall firewallData)
+    else
+        delay
