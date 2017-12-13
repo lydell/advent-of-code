@@ -1,24 +1,11 @@
 module Day13 exposing (..)
 
-import Day13Input exposing (input)
-import Firewall exposing (findUncaughtDelay, fromList, getSeverity, iterate)
-
 
 output : () -> ( String, String )
 output () =
-    ( input |> runThrough |> toString
-    , input |> runThroughUncaught |> toString
+    ( input |> parse |> totalSeverity |> toString
+    , input |> parse |> findUncaughtDelay |> toString
     )
-
-
-runThrough : String -> Int
-runThrough =
-    parse >> fromList >> iterate >> getSeverity
-
-
-runThroughUncaught : String -> Int
-runThroughUncaught =
-    parse >> fromList >> findUncaughtDelay
 
 
 parse : String -> List ( Int, Int )
@@ -47,3 +34,44 @@ parseLine string =
 
         _ ->
             Nothing
+
+
+getsCaught : Int -> Int -> Bool
+getsCaught n range =
+    n % ((range - 1) * 2) == 0
+
+
+severity : ( Int, Int ) -> Int
+severity ( depth, range ) =
+    if getsCaught depth range then
+        depth * range
+
+    else
+        0
+
+
+totalSeverity : List ( Int, Int ) -> Int
+totalSeverity =
+    List.map severity >> List.sum
+
+
+findUncaughtDelay : List ( Int, Int ) -> Int
+findUncaughtDelay =
+    findUncaughtDelayHelper 0
+
+
+findUncaughtDelayHelper : Int -> List ( Int, Int ) -> Int
+findUncaughtDelayHelper delay list =
+    let
+        caught =
+            list
+                |> List.any
+                    (\( depth, range ) ->
+                        getsCaught (depth + delay) range
+                    )
+    in
+    if caught then
+        findUncaughtDelayHelper (delay + 1) list
+
+    else
+        delay

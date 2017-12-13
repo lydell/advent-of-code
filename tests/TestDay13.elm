@@ -1,6 +1,6 @@
 module TestDay13 exposing (..)
 
-import Day13 exposing (runThrough, runThroughUncaught)
+import Day13 exposing (findUncaughtDelay, parse, totalSeverity)
 import Expect exposing (Expectation)
 import Test exposing (..)
 
@@ -16,16 +16,16 @@ input =
 suite : Test
 suite =
     describe "Day13"
-        [ describe "runThrough"
+        [ describe "totalSeverity"
             [ test "it works" <|
                 \_ ->
-                    runThrough input
+                    totalSeverity (parse input)
                         |> Expect.equal 24
             ]
-        , describe "runThroughUncaught"
+        , describe "findUncaughtDelay"
             [ test "it works" <|
                 \_ ->
-                    runThroughUncaught input
+                    findUncaughtDelay (parse input)
                         |> Expect.equal 10
             ]
         ]
