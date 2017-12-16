@@ -10,7 +10,7 @@ import Set exposing (Set)
 output : () -> ( String, String )
 output () =
     ( input |> makeGrid |> countY |> toString
-    , ""
+    , input |> makeGrid |> countClusters |> toString
     )
 
 
@@ -98,10 +98,9 @@ countY =
 
 
 countClusters : List (List Binary) -> Maybe Int
-countClusters list =
-    list
-        |> Matrix.fromList
-        |> Maybe.map (findAllClusters >> List.length)
+countClusters =
+    Matrix.fromList
+        >> Maybe.map (findAllClusters >> List.length)
 
 
 findAllClusters : Matrix Binary -> List (Set ( Int, Int ))
@@ -112,7 +111,15 @@ findAllClusters matrix =
                 clusters
 
             else
-                findCluster matrix coords :: clusters
+                let
+                    newCluster =
+                        findCluster matrix coords
+                in
+                if newCluster == Set.empty then
+                    clusters
+
+                else
+                    newCluster :: clusters
     in
     matrix
         |> Matrix.toIndexedArray
