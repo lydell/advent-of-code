@@ -1,6 +1,6 @@
 module TestDay16 exposing (..)
 
-import Day16 exposing (evaluate, parse)
+import Day16 exposing (evaluate, evaluateN, parse)
 import Expect exposing (Expectation)
 import Test exposing (..)
 
@@ -24,5 +24,17 @@ suite =
                     evaluate (parse input) dancers5
                         |> Expect.equalLists
                             [ "b", "a", "e", "d", "c" ]
+            ]
+        , describe "evaluateN"
+            [ test "2 rounds" <|
+                \_ ->
+                    evaluateN 2 (parse input) dancers5
+                        |> Expect.equalLists
+                            [ "c", "e", "a", "d", "b" ]
+            , test "several rounds" <|
+                \_ ->
+                    evaluateN (2 + 4 * truncate 1.0e9) (parse input) dancers5
+                        |> Expect.equalLists
+                            [ "c", "e", "a", "d", "b" ]
             ]
         ]

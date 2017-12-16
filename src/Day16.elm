@@ -7,7 +7,7 @@ import List.Extra
 output : () -> ( String, String )
 output () =
     ( evaluate (parse input) dancers16 |> String.join ""
-    , ""
+    , evaluateN (truncate 1.0e9) (parse input) dancers16 |> String.join ""
     )
 
 
@@ -84,6 +84,37 @@ evaluateInstruction instruction names =
 
                 _ ->
                     names
+
+
+evaluateN : Int -> List Instruction -> List String -> List String
+evaluateN n instructions names =
+    let
+        period =
+            findPeriod instructions names
+
+        smallerN =
+            rem n period
+    in
+    List.repeat smallerN ()
+        |> List.foldl (always (evaluate instructions)) names
+
+
+findPeriod : List Instruction -> List String -> Int
+findPeriod instructions names =
+    findPeriodHelper instructions names names 1
+
+
+findPeriodHelper : List Instruction -> List String -> List String -> Int -> Int
+findPeriodHelper instructions names startNames period =
+    let
+        newNames =
+            evaluate instructions names
+    in
+    if newNames == startNames then
+        period
+
+    else
+        findPeriodHelper instructions newNames startNames (period + 1)
 
 
 dancers16 : List String
