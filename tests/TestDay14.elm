@@ -1,8 +1,13 @@
 module TestDay14 exposing (..)
 
-import Day14 exposing (countY, makeGrid)
+import Day14 exposing (Binary, countClusters, countY, makeGrid)
 import Expect exposing (Expectation)
 import Test exposing (..)
+
+
+grid : List (List Binary)
+grid =
+    makeGrid "flqrgnkx"
 
 
 suite : Test
@@ -12,9 +17,6 @@ suite =
             [ test "it works" <|
                 \_ ->
                     let
-                        grid =
-                            makeGrid "flqrgnkx"
-
                         grid8x8 =
                             grid
                                 |> List.take 8
@@ -22,5 +24,11 @@ suite =
                     in
                     countY grid8x8
                         |> Expect.equal 29
+            ]
+        , describe "countClusters"
+            [ test "it works" <|
+                \_ ->
+                    countClusters grid
+                        |> Expect.equal (Just 1242)
             ]
         ]

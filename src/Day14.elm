@@ -1,7 +1,10 @@
 module Day14 exposing (..)
 
+import Array
 import Day14Input exposing (input)
 import KnotHash
+import Matrix exposing (Matrix)
+import Set exposing (Set)
 
 
 output : () -> ( String, String )
@@ -92,3 +95,60 @@ countY : List (List Binary) -> Int
 countY =
     List.map (List.filter ((==) Y) >> List.length)
         >> List.sum
+
+
+countClusters : List (List Binary) -> Maybe Int
+countClusters list =
+    list
+        |> Matrix.fromList
+        |> Maybe.map (findAllClusters >> List.length)
+
+
+findAllClusters : Matrix Binary -> List (Set ( Int, Int ))
+findAllClusters matrix =
+    let
+        addCluster coords clusters =
+            if List.any (Set.member coords) clusters then
+                clusters
+
+            else
+                findCluster matrix coords :: clusters
+    in
+    matrix
+        |> Matrix.toIndexedArray
+        |> Array.map Tuple.first
+        |> Array.foldl addCluster []
+
+
+findCluster : Matrix Binary -> ( Int, Int ) -> Set ( Int, Int )
+findCluster matrix coords =
+    findClusterHelper matrix coords Set.empty
+
+
+findClusterHelper :
+    Matrix Binary
+    -> ( Int, Int )
+    -> Set ( Int, Int )
+    -> Set ( Int, Int )
+findClusterHelper matrix ( x, y ) cluster =
+    if Set.member ( x, y ) cluster then
+        cluster
+
+    else
+        case Matrix.get x y matrix of
+            Just Y ->
+                let
+                    neighbourCoords =
+                        [ ( x, y - 1 )
+                        , ( x + 1, y )
+                        , ( x, y + 1 )
+                        , ( x - 1, y )
+                        ]
+                in
+                List.foldl
+                    (findClusterHelper matrix)
+                    (Set.insert ( x, y ) cluster)
+                    neighbourCoords
+
+            _ ->
+                cluster
