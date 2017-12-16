@@ -3,33 +3,60 @@ module Day15 exposing (..)
 
 output : () -> ( String, String )
 output () =
-    ( judge ( startA, startB ) ( generatorA, generatorB ) |> toString
-    , ""
+    ( judge ( generatorA, generatorB ) |> toString
+    , judgeFiltered ( generatorAFiltered, generatorBFiltered ) |> toString
     )
 
 
-judge : ( Int, Int ) -> ( Int -> Int, Int -> Int ) -> Int
+type alias Generator =
+    { value : Int
+    , factor : Int
+    , filter : Int -> Bool
+    }
+
+
+next : Generator -> Generator
+next { value, factor, filter } =
+    let
+        newValue =
+            rem (value * factor) 2147483647
+
+        newGenerator =
+            { value = newValue, factor = factor, filter = filter }
+    in
+    if filter newValue then
+        newGenerator
+    else
+        next newGenerator
+
+
+judge : ( Generator, Generator ) -> Int
 judge =
     judgeN (truncate 4.0e7) 16
 
 
-judgeN : Int -> Int -> ( Int, Int ) -> ( Int -> Int, Int -> Int ) -> Int
-judgeN n numBits ( startA, startB ) ( generatorA, generatorB ) =
-    judgeNHelper n numBits ( startA, startB ) ( generatorA, generatorB ) 0
+judgeFiltered : ( Generator, Generator ) -> Int
+judgeFiltered =
+    judgeN (truncate 5.0e6) 16
 
 
-judgeNHelper : Int -> Int -> ( Int, Int ) -> ( Int -> Int, Int -> Int ) -> Int -> Int
-judgeNHelper n numBits ( startA, startB ) ( generatorA, generatorB ) count =
+judgeN : Int -> Int -> ( Generator, Generator ) -> Int
+judgeN n numBits ( generatorA, generatorB ) =
+    judgeNHelper n numBits ( generatorA, generatorB ) 0
+
+
+judgeNHelper : Int -> Int -> ( Generator, Generator ) -> Int -> Int
+judgeNHelper n numBits ( generatorA, generatorB ) count =
     if n > 0 then
         let
             nextA =
-                generatorA startA
+                next generatorA
 
             nextB =
-                generatorB startB
+                next generatorB
 
             diff =
-                if matchesNLowestBits numBits nextA nextB then
+                if matchesNLowestBits numBits nextA.value nextB.value then
                     1
                 else
                     0
@@ -38,7 +65,6 @@ judgeNHelper n numBits ( startA, startB ) ( generatorA, generatorB ) count =
             (n - 1)
             numBits
             ( nextA, nextB )
-            ( generatorA, generatorB )
             (count + diff)
     else
         count
@@ -49,52 +75,48 @@ matchesNLowestBits n a b =
     rem (a - b) (2 ^ n) == 0
 
 
-generateN : Int -> Int -> (Int -> Int) -> List Int
-generateN num start generator =
+generateN : Int -> Generator -> List Int
+generateN num generator =
     let
-        next result =
+        fold result =
             case result of
                 [] ->
-                    generator start :: result
+                    [ next generator ]
 
                 previous :: rest ->
-                    generator previous :: result
+                    next previous :: result
     in
     List.repeat num ()
-        |> List.foldl (always next) []
+        |> List.foldl (always fold) []
         |> List.reverse
+        |> List.map .value
 
 
-generator : Int -> Int -> Int
-generator factor number =
-    rem (number * factor) 2147483647
-
-
-generatorA : Int -> Int
+generatorA : Generator
 generatorA =
-    generator factorA
+    { value = 591
+    , factor = 16807
+    , filter = always True
+    }
 
 
-generatorB : Int -> Int
+generatorAFiltered : Generator
+generatorAFiltered =
+    { generatorA
+        | filter = \value -> rem value 4 == 0
+    }
+
+
+generatorB : Generator
 generatorB =
-    generator factorB
+    { value = 393
+    , factor = 48271
+    , filter = always True
+    }
 
 
-factorA : Int
-factorA =
-    16807
-
-
-factorB : Int
-factorB =
-    48271
-
-
-startA : Int
-startA =
-    591
-
-
-startB : Int
-startB =
-    393
+generatorBFiltered : Generator
+generatorBFiltered =
+    { generatorB
+        | filter = \value -> rem value 8 == 0
+    }

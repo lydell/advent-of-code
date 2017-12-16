@@ -1,18 +1,18 @@
 module TestDay15 exposing (..)
 
-import Day15 exposing (generateN, generatorA, generatorB, judge, judgeN, matchesNLowestBits)
+import Day15 exposing (Generator, generateN, generatorA, generatorAFiltered, generatorB, generatorBFiltered, judge, judgeFiltered, judgeN, matchesNLowestBits)
 import Expect exposing (Expectation)
 import Test exposing (..)
 
 
-startA : Int
-startA =
-    65
+testA : Generator -> Generator
+testA generator =
+    { generator | value = 65 }
 
 
-startB : Int
-startB =
-    8921
+testB : Generator -> Generator
+testB generator =
+    { generator | value = 8921 }
 
 
 suite : Test
@@ -21,7 +21,7 @@ suite =
         [ describe "generateN"
             [ test "generatorA" <|
                 \_ ->
-                    generateN 5 startA generatorA
+                    generateN 5 (testA generatorA)
                         |> Expect.equalLists
                             [ 1092455
                             , 1181022009
@@ -31,7 +31,7 @@ suite =
                             ]
             , test "generatorB" <|
                 \_ ->
-                    generateN 5 startB generatorB
+                    generateN 5 (testB generatorB)
                         |> Expect.equalLists
                             [ 430625591
                             , 1233683848
@@ -53,13 +53,19 @@ suite =
         , describe "judgeN"
             [ test "it works" <|
                 \_ ->
-                    judgeN 5 16 ( startA, startB ) ( generatorA, generatorB )
+                    judgeN 5 16 ( testA generatorA, testB generatorB )
                         |> Expect.equal 1
             ]
         , describe "judge"
             [ test "it works" <|
                 \_ ->
-                    judge ( startA, startB ) ( generatorA, generatorB )
+                    judge ( testA generatorA, testB generatorB )
                         |> Expect.equal 588
+            ]
+        , describe "judgeFiltered"
+            [ test "it works" <|
+                \_ ->
+                    judgeFiltered ( testA generatorAFiltered, testB generatorBFiltered )
+                        |> Expect.equal 309
             ]
         ]
