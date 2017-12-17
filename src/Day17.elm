@@ -7,7 +7,7 @@ import List.Extra
 output : () -> ( String, String )
 output () =
     ( stepN 2017 input |> getFollowingValue |> toString
-    , ""
+    , getNumberAfterZeroN (truncate 5.0e7) input |> toString
     )
 
 
@@ -64,3 +64,32 @@ getFollowingValue { list, pos } =
 
         _ ->
             List.Extra.getAt (rem (pos + 1) (List.length list)) list
+
+
+getNumberAfterZeroN : Int -> Int -> Maybe Int
+getNumberAfterZeroN n stepSize =
+    getNumberAfterZeroNHelper n stepSize 0 0 Nothing
+
+
+getNumberAfterZeroNHelper : Int -> Int -> Int -> Int -> Maybe Int -> Maybe Int
+getNumberAfterZeroNHelper n stepSize pos nextValue numberAfterZero =
+    if nextValue <= n then
+        let
+            newPos =
+                if nextValue == 0 then
+                    0
+
+                else
+                    rem (pos + stepSize) nextValue + 1
+
+            newNumberAfterZero =
+                if newPos == 1 then
+                    Just nextValue
+
+                else
+                    numberAfterZero
+        in
+        getNumberAfterZeroNHelper n stepSize newPos (nextValue + 1) newNumberAfterZero
+
+    else
+        numberAfterZero
