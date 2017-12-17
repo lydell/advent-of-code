@@ -8,6 +8,7 @@ import Day13
 import Day14
 import Day15
 import Day16
+import Day17
 import Day2
 import Day3
 import Day4
@@ -114,6 +115,9 @@ run day =
 
         "16" ->
             Ok (Day16.output ())
+
+        "17" ->
+            Ok (Day17.output ())
 
         _ ->
             Err ("Invalid day value. See the end of src/Runner.elm for valid ones. Got: " ++ day)
