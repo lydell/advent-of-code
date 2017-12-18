@@ -26,6 +26,6 @@ suite =
             [ test "it works" <|
                 \_ ->
                     firstRecovered (parse input)
-                        |> Expect.equal (Ok (Just 4))
+                        |> Expect.equal (Just 4)
             ]
         ]

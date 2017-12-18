@@ -27,11 +27,6 @@ type Value
     | Number Int
 
 
-type RuntimeError
-    = ReferenceError String Instruction
-    | ZeroDivisionError Instruction
-
-
 type Tone
     = Silent
     | Playing Int
@@ -93,16 +88,11 @@ emptyEvaluation =
     { registers = Dict.empty, tone = Silent }
 
 
-evaluate : Instruction -> Evaluation -> Result RuntimeError ( Evaluation, Int )
+evaluate : Instruction -> Evaluation -> ( Evaluation, Int )
 evaluate instruction ({ registers, tone } as evaluation) =
     let
         getRegister register =
-            case Dict.get register registers of
-                Just number ->
-                    Ok number
-
-                Nothing ->
-                    Err <| ReferenceError register instruction
+            Dict.get register registers
 
         getValue value =
             case value of
@@ -110,71 +100,66 @@ evaluate instruction ({ registers, tone } as evaluation) =
                     getRegister register
 
                 Number number ->
-                    Ok number
+                    Just number
 
         update f register value =
-            Result.map2
+            Maybe.map2
                 (\a b ->
-                    f a b
-                        |> Result.map
-                            (\number ->
-                                { evaluation
-                                    | registers =
-                                        Dict.insert register number registers
-                                }
-                            )
+                    { evaluation
+                        | registers =
+                            Dict.insert register (f a b) registers
+                    }
                 )
                 (getRegister register)
                 (getValue value)
-                |> Result.andThen identity
+                |> Maybe.withDefault evaluation
 
-        ok f a b =
-            f a b |> Ok
-
-        safeModulo instruction a b =
+        safeModulo a b =
             if b == 0 then
-                Err <| ZeroDivisionError instruction
+                a
 
             else
-                Ok <| a % b
+                a % b
 
-        jumpOne =
-            Result.map (\result -> ( result, 1 ))
+        jumpOne result =
+            ( result, 1 )
     in
     case instruction of
         Isnd register ->
             getRegister register
-                |> Result.map
+                |> Maybe.map
                     (\number ->
                         { evaluation | tone = Playing number }
                     )
+                |> Maybe.withDefault evaluation
                 |> jumpOne
 
         Iset register value ->
             getValue value
-                |> Result.map
+                |> Maybe.map
                     (\number ->
                         { evaluation
                             | registers = Dict.insert register number registers
                         }
                     )
+                |> Maybe.withDefault evaluation
                 |> jumpOne
 
         Iadd register value ->
-            update (ok (+)) register value
+            update (+) register value
                 |> jumpOne
 
         Imul register value ->
-            update (ok (*)) register value
+            update (*) register value
                 |> jumpOne
 
         Imod register value ->
-            update (safeModulo instruction) register value
+            update safeModulo register value
                 |> jumpOne
 
         Ircv register ->
             getRegister register
-                |> Result.map
+                |> Maybe.map
                     (\number ->
                         if number == 0 then
                             evaluation
@@ -192,10 +177,11 @@ evaluate instruction ({ registers, tone } as evaluation) =
                                 Recovering _ ->
                                     evaluation
                     )
+                |> Maybe.withDefault evaluation
                 |> jumpOne
 
         Ijgz register value ->
-            Result.map2
+            Maybe.map2
                 (\registerValue jumpValue ->
                     if registerValue > 0 then
                         ( evaluation, jumpValue )
@@ -205,34 +191,40 @@ evaluate instruction ({ registers, tone } as evaluation) =
                 )
                 (getRegister register)
                 (getValue value)
+                |> Maybe.withDefault (jumpOne evaluation)
 
 
-firstRecovered : List Instruction -> Result RuntimeError (Maybe Int)
+evaluateFromList :
+    List Instruction
+    -> ( Evaluation, Int )
+    -> Maybe ( Evaluation, Int )
+evaluateFromList instructions ( evaluation, pos ) =
+    List.Extra.getAt pos instructions
+        |> Maybe.map (flip evaluate evaluation >> Tuple.mapSecond ((+) pos))
+
+
+evaluateN : Int -> List Instruction -> Maybe ( Evaluation, Int )
+evaluateN n instructions =
+    List.foldl
+        (always (Maybe.andThen (evaluateFromList instructions)))
+        (Just ( emptyEvaluation, 0 ))
+        (List.repeat n ())
+
+
+firstRecovered : List Instruction -> Maybe Int
 firstRecovered instructions =
-    firstRecoveredHelper instructions 0 emptyEvaluation
+    firstRecoveredHelper instructions ( emptyEvaluation, 0 )
 
 
 firstRecoveredHelper :
     List Instruction
-    -> Int
-    -> Evaluation
-    -> Result RuntimeError (Maybe Int)
-firstRecoveredHelper instructions pos evaluation =
+    -> ( Evaluation, Int )
+    -> Maybe Int
+firstRecoveredHelper instructions ( evaluation, pos ) =
     case evaluation.tone of
         Recovering number ->
-            Ok (Just number)
+            Just number
 
         _ ->
-            case List.Extra.getAt pos instructions of
-                Just instruction ->
-                    evaluate instruction evaluation
-                        |> Result.andThen
-                            (\( newEvaluation, jump ) ->
-                                firstRecoveredHelper
-                                    instructions
-                                    (pos + jump)
-                                    newEvaluation
-                            )
-
-                Nothing ->
-                    Ok Nothing
+            evaluateFromList instructions ( evaluation, pos )
+                |> Maybe.andThen (firstRecoveredHelper instructions)
