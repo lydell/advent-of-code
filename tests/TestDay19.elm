@@ -31,10 +31,10 @@ suite =
             [ test "it works" <|
                 \_ ->
                     goThrough (parse input1)
-                        |> Expect.equalLists [ 'A', 'B', 'C', 'D', 'E', 'F' ]
+                        |> Expect.equal ( 38, [ 'A', 'B', 'C', 'D', 'E', 'F' ] )
             , test "complicated case" <|
                 \_ ->
                     goThrough (parse input2)
-                        |> Expect.equalLists [ 'A', 'B', 'C' ]
+                        |> Expect.equal ( 27, [ 'A', 'B', 'C' ] )
             ]
         ]

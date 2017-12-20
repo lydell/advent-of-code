@@ -9,8 +9,8 @@ import Matrix exposing (Matrix)
 
 output : () -> ( String, String )
 output () =
-    ( input |> parse |> goThrough |> List.map String.fromChar |> String.join ""
-    , ""
+    ( input |> parse |> goThrough |> Tuple.second |> List.map String.fromChar |> String.join ""
+    , input |> parse |> goThrough |> Tuple.first |> toString
     )
 
 
@@ -236,30 +236,36 @@ withDirection direction ( x, y ) =
     ( x, y, direction )
 
 
-goThrough : Matrix Instruction -> List Char
+goThrough : Matrix Instruction -> ( Int, List Char )
 goThrough grid =
     Matrix.getRow 0 grid
         |> Maybe.andThen (Array.toList >> List.Extra.elemIndex MoveVertical)
-        |> Maybe.map (\x -> goThroughHelper grid ( x, 0, Down ) [])
-        |> Maybe.map List.reverse
-        |> Maybe.withDefault []
+        |> Maybe.map (\x -> goThroughHelper grid ( x, 0, Down ) ( 0, [] ))
+        |> Maybe.map (Tuple.mapSecond List.reverse)
+        |> Maybe.withDefault ( 0, [] )
 
 
 goThroughHelper :
     Matrix Instruction
     -> ( Int, Int, Direction )
-    -> List Char
-    -> List Char
-goThroughHelper grid ( x, y, direction ) chars =
+    -> ( Int, List Char )
+    -> ( Int, List Char )
+goThroughHelper grid ( x, y, direction ) ( numSteps, chars ) =
     case Matrix.get x y grid of
         Nothing ->
-            chars
+            ( numSteps, chars )
 
         Just Empty ->
-            chars
+            ( numSteps, chars )
 
         Just (Letter char) ->
-            goThroughHelper grid (step grid ( x, y, direction )) (char :: chars)
+            goThroughHelper
+                grid
+                (step grid ( x, y, direction ))
+                ( numSteps + 1, char :: chars )
 
         Just _ ->
-            goThroughHelper grid (step grid ( x, y, direction )) chars
+            goThroughHelper
+                grid
+                (step grid ( x, y, direction ))
+                ( numSteps + 1, chars )
