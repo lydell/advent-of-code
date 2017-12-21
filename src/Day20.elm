@@ -9,7 +9,7 @@ output () =
     -- If the same closest particles repeat 1000 times, consider it done.
     ( parse input |> findClosest 1000 |> toString
       -- If the same length repeats 100 times, consider it done.
-    , parse input |> findSurvivors 100 |> toString
+    , parse input |> findNumSurvivors 100 |> toString
     )
 
 
@@ -155,13 +155,13 @@ findClosestHelper threshold particles ( lastClosest, seenTimes ) =
                 findClosestHelper threshold newParticles newResult
 
 
-findSurvivors : Int -> List Particle -> Int
-findSurvivors threshold particles =
-    findSurvivorsHelper threshold particles ( 0, 0 )
+findNumSurvivors : Int -> List Particle -> Int
+findNumSurvivors threshold particles =
+    findNumSurvivorsHelper threshold particles ( 0, 0 )
 
 
-findSurvivorsHelper : Int -> List Particle -> ( Int, Int ) -> Int
-findSurvivorsHelper threshold particles ( lastLength, seenTimes ) =
+findNumSurvivorsHelper : Int -> List Particle -> ( Int, Int ) -> Int
+findNumSurvivorsHelper threshold particles ( lastLength, seenTimes ) =
     case particles of
         [] ->
             0
@@ -185,7 +185,7 @@ findSurvivorsHelper threshold particles ( lastLength, seenTimes ) =
                         else
                             ( length, 1 )
                 in
-                findSurvivorsHelper threshold newParticles newResult
+                findNumSurvivorsHelper threshold newParticles newResult
 
 
 collide : List Particle -> List Particle
