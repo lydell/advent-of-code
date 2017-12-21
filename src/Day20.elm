@@ -8,7 +8,8 @@ output : () -> ( String, String )
 output () =
     -- This gave me three candidates. I simply tried submitting them in order.
     ( parse input |> findSlowest |> toString
-    , ""
+      -- This prints the same length over and over after a while.
+    , parse input |> stepN (truncate 1.0e3) |> toString
     )
 
 
@@ -100,3 +101,80 @@ findSlowest particles =
 
         Nothing ->
             []
+
+
+step : List Particle -> List Particle
+step particles =
+    List.map stepParticle particles
+
+
+stepParticle : Particle -> Particle
+stepParticle { x, y, z, vx, vy, vz, ax, ay, az } =
+    let
+        newVx =
+            vx + ax
+
+        newVy =
+            vy + ay
+
+        newVz =
+            vz + az
+    in
+    { x = x + newVx
+    , y = y + newVy
+    , z = z + newVz
+    , vx = newVx
+    , vy = newVy
+    , vz = newVz
+    , ax = ax
+    , ay = ay
+    , az = az
+    }
+
+
+stepN : Int -> List Particle -> Int
+stepN n particles =
+    case particles of
+        [] ->
+            0
+
+        _ ->
+            if n > 0 then
+                let
+                    _ =
+                        Debug.log "#" (List.length particles)
+                in
+                stepN (n - 1) (collide (step particles))
+
+            else
+                List.length particles
+
+
+collide : List Particle -> List Particle
+collide particles =
+    case particles of
+        [] ->
+            []
+
+        first :: rest ->
+            let
+                firstPos =
+                    getPos first
+
+                filtered =
+                    rest
+                        |> List.filter
+                            (\particle ->
+                                firstPos /= getPos particle
+                            )
+            in
+            if List.length filtered == List.length rest then
+                first :: collide rest
+
+            else
+                collide filtered
+
+
+getPos : Particle -> ( Int, Int, Int )
+getPos { x, y, z } =
+    ( x, y, z )
