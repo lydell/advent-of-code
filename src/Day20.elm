@@ -8,8 +8,8 @@ output : () -> ( String, String )
 output () =
     -- This gave me three candidates. I simply tried submitting them in order.
     ( parse input |> findSlowest |> toString
-      -- This prints the same length over and over after a while.
-    , parse input |> stepN (truncate 1.0e3) |> toString
+      -- If the same length repeats 100 times, consider it done.
+    , parse input |> findSurvivors 100 |> toString
     )
 
 
@@ -132,22 +132,37 @@ stepParticle { x, y, z, vx, vy, vz, ax, ay, az } =
     }
 
 
-stepN : Int -> List Particle -> Int
-stepN n particles =
+findSurvivors : Int -> List Particle -> Int
+findSurvivors threshold particles =
+    findSurvivorsHelper threshold particles ( 0, 0 )
+
+
+findSurvivorsHelper : Int -> List Particle -> ( Int, Int ) -> Int
+findSurvivorsHelper threshold particles ( lastLength, seenTimes ) =
     case particles of
         [] ->
             0
 
         _ ->
-            if n > 0 then
-                let
-                    _ =
-                        Debug.log "#" (List.length particles)
-                in
-                stepN (n - 1) (collide (step particles))
+            if seenTimes > threshold then
+                lastLength
 
             else
-                List.length particles
+                let
+                    newParticles =
+                        collide (step particles)
+
+                    length =
+                        List.length newParticles
+
+                    newResult =
+                        if length == lastLength then
+                            ( lastLength, seenTimes + 1 )
+
+                        else
+                            ( length, 1 )
+                in
+                findSurvivorsHelper threshold newParticles newResult
 
 
 collide : List Particle -> List Particle
