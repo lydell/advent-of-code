@@ -6,8 +6,8 @@ import Regex exposing (HowMany(AtMost), Match, Regex)
 
 output : () -> ( String, String )
 output () =
-    -- This gave me three candidates. I simply tried submitting them in order.
-    ( parse input |> findSlowest |> toString
+    -- If the same closest particles repeat 1000 times, consider it done.
+    ( parse input |> findClosest 1000 |> toString
       -- If the same length repeats 100 times, consider it done.
     , parse input |> findSurvivors 100 |> toString
     )
@@ -78,31 +78,6 @@ parseTriplet string =
             Nothing
 
 
-findSlowest : List Particle -> List Int
-findSlowest particles =
-    let
-        idsWithAccs =
-            particles
-                |> List.indexedMap
-                    (\i { ax, ay, az } ->
-                        ( i, abs ax + abs ay + abs az )
-                    )
-
-        minimum =
-            idsWithAccs
-                |> List.map Tuple.second
-                |> List.minimum
-    in
-    case minimum of
-        Just acc ->
-            idsWithAccs
-                |> List.filter (Tuple.second >> (==) acc)
-                |> List.map Tuple.first
-
-        Nothing ->
-            []
-
-
 step : List Particle -> List Particle
 step particles =
     List.map stepParticle particles
@@ -130,6 +105,54 @@ stepParticle { x, y, z, vx, vy, vz, ax, ay, az } =
     , ay = ay
     , az = az
     }
+
+
+findClosest : Int -> List Particle -> List Int
+findClosest threshold particles =
+    findClosestHelper threshold particles ( [], 0 )
+
+
+findClosestHelper : Int -> List Particle -> ( List Int, Int ) -> List Int
+findClosestHelper threshold particles ( lastClosest, seenTimes ) =
+    case particles of
+        [] ->
+            []
+
+        _ ->
+            if seenTimes > threshold then
+                lastClosest
+
+            else
+                let
+                    newParticles =
+                        step particles
+
+                    idsWithDistances =
+                        newParticles
+                            |> List.indexedMap
+                                (\id particle ->
+                                    ( id, getDistance particle )
+                                )
+
+                    minDistance =
+                        idsWithDistances
+                            |> List.map Tuple.second
+                            |> List.minimum
+                            |> Maybe.withDefault 0
+
+                    closest =
+                        idsWithDistances
+                            |> List.filter (Tuple.second >> (==) minDistance)
+                            |> List.map Tuple.first
+
+                    newResult =
+                        if closest == lastClosest then
+                            ( lastClosest, seenTimes + 1 )
+
+                        else
+                            ( closest, 1 )
+                in
+                findClosestHelper threshold newParticles newResult
 
 
 findSurvivors : Int -> List Particle -> Int
@@ -193,3 +216,8 @@ collide particles =
 getPos : Particle -> ( Int, Int, Int )
 getPos { x, y, z } =
     ( x, y, z )
+
+
+getDistance : Particle -> Int
+getDistance { x, y, z } =
+    abs x + abs y + abs z
