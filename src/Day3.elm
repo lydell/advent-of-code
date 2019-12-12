@@ -1,12 +1,15 @@
 module Day3 exposing (..)
 
 import Browser
+import Browser.Dom
+import Browser.Events
 import Day3Input exposing (puzzleInput)
 import Html exposing (Html)
 import Html.Attributes as Attr
 import Html.Events as Events
 import Svg exposing (Svg)
 import Svg.Attributes as SvgAttr
+import Task exposing (Task)
 
 
 type Move
@@ -139,6 +142,22 @@ main =
 type alias Model =
     { input : String
     , parsed : ( List Wire, Bounds )
+    , svgViewport : Browser.Dom.Viewport
+    }
+
+
+emptyViewport : Browser.Dom.Viewport
+emptyViewport =
+    { scene =
+        { width = 0
+        , height = 0
+        }
+    , viewport =
+        { x = 0
+        , y = 0
+        , width = 0
+        , height = 0
+        }
     }
 
 
@@ -150,13 +169,16 @@ init =
     in
     ( { input = input
       , parsed = parse input
+      , svgViewport = emptyViewport
       }
-    , Cmd.none
+    , getSvgViewport
     )
 
 
 type Msg
     = InputChanged String
+    | WindowResized
+    | GotSvgViewport (Result Browser.Dom.Error Browser.Dom.Viewport)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -165,10 +187,25 @@ update msg model =
         InputChanged text ->
             ( { model | input = text, parsed = parse text }, Cmd.none )
 
+        WindowResized ->
+            ( model, getSvgViewport )
 
-offset : Int
-offset =
-    10
+        GotSvgViewport (Ok viewport) ->
+            ( { model | svgViewport = viewport }, Cmd.none )
+
+        GotSvgViewport (Err _) ->
+            ( model, Cmd.none )
+
+
+svgId : String
+svgId =
+    "svg"
+
+
+getSvgViewport : Cmd Msg
+getSvgViewport =
+    Browser.Dom.getViewportOf svgId
+        |> Task.attempt GotSvgViewport
 
 
 view : Model -> Html Msg
@@ -178,10 +215,13 @@ view model =
             model.parsed
 
         width =
-            bounds.right - bounds.left + offset * 2
+            max 1 (bounds.right - bounds.left)
 
         height =
-            bounds.bottom - bounds.top + offset * 2
+            max 1 (bounds.bottom - bounds.top)
+
+        svgWidth =
+            model.svgViewport.viewport.width
 
         viewBox =
             [ bounds.left, bounds.top, width, height ]
@@ -199,23 +239,35 @@ view model =
         wiresSvg =
             List.indexedMap (\index wire -> viewWire (color index) wire) wires
     in
-    Html.div [ Attr.style "display" "flex", Attr.style "height" "100%" ]
-        [ Html.div [ Attr.style "flex" "1", Attr.style "position" "relative" ]
+    Html.div
+        [ Attr.style "display" "flex"
+        , Attr.style "height" "100%"
+        ]
+        [ Html.div
+            [ Attr.style "flex" "1"
+            , Attr.style "position" "relative"
+            , Attr.style "margin-right" "30px"
+            ]
             [ Svg.svg
                 [ Attr.style "position" "absolute"
                 , Attr.style "top" "0"
                 , Attr.style "left" "0"
                 , Attr.style "width" "100%"
                 , Attr.style "height" "100%"
+                , Attr.style "overflow" "visible"
                 , SvgAttr.viewBox viewBox
+                , SvgAttr.id svgId
                 ]
                 [ Svg.g [] wiresSvg
+                , Svg.path [ SvgAttr.d "M0,0 Z", SvgAttr.stroke "#fff", SvgAttr.strokeWidth "10" ] []
                 , Svg.circle
-                    [ SvgAttr.cx (String.fromInt offset)
-                    , SvgAttr.cy (String.fromInt offset)
-                    , SvgAttr.r "1"
-                    , SvgAttr.fill "#fff"
-                    , Attr.attribute "vector-effect" "non-scaling-size"
+                    [ SvgAttr.cx "0"
+                    , SvgAttr.cy "0"
+                    , SvgAttr.r (String.fromFloat (8 * toFloat width / svgWidth))
+                    , SvgAttr.fill "none"
+                    , SvgAttr.stroke "#fff"
+                    , SvgAttr.strokeWidth "4"
+                    , Attr.attribute "vector-effect" "non-scaling-stroke"
                     ]
                     []
                 ]
@@ -234,7 +286,7 @@ viewWire : String -> Wire -> Svg Msg
 viewWire color wire =
     let
         d =
-            ("M " ++ String.fromInt offset ++ "," ++ String.fromInt offset)
+            "M 0,0"
                 :: List.map
                     (\move ->
                         case move of
@@ -251,7 +303,7 @@ viewWire color wire =
         [ SvgAttr.d d
         , SvgAttr.fill "none"
         , SvgAttr.stroke color
-        , SvgAttr.strokeWidth "2"
+        , SvgAttr.strokeWidth "4"
         , Attr.attribute "vector-effect" "non-scaling-stroke"
         , SvgAttr.strokeLinecap "round"
         , SvgAttr.strokeLinejoin "round"
@@ -261,4 +313,4 @@ viewWire color wire =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    Browser.Events.onResize (\_ _ -> WindowResized)
