@@ -146,6 +146,9 @@ type alias Model =
     , parsed : ( List Wire, Bounds )
     , boundsElement : Browser.Dom.Element
     , mouse : Maybe ( Float, Float )
+    , mouseDown : Maybe ( Float, Float )
+    , zoom : Float
+    , pan : ( Float, Float )
     }
 
 
@@ -180,6 +183,9 @@ init =
       , parsed = parse input
       , boundsElement = emptyElement
       , mouse = Nothing
+      , mouseDown = Nothing
+      , zoom = 1
+      , pan = ( 0, 0 )
       }
     , getBoundsElement
     )
@@ -189,15 +195,26 @@ type Msg
     = InputChanged String
     | WindowResized
     | GotBoundsElement (Result Browser.Dom.Error Browser.Dom.Element)
-    | MouseMove Float Float
-    | MouseOut
+    | BoundsMouseMove ( Float, Float )
+    | BoundsMouseOut
+    | MouseDown ( Float, Float )
+    | MouseUp
+    | MouseMove ( Float, Float )
+    | Wheel ( Float, ( Float, Float ) )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         InputChanged text ->
-            ( { model | input = text, parsed = parse text }, getBoundsElement )
+            ( { model
+                | input = text
+                , parsed = parse text
+                , zoom = 1
+                , pan = ( 0, 0 )
+              }
+            , getBoundsElement
+            )
 
         WindowResized ->
             ( model, getBoundsElement )
@@ -208,21 +225,64 @@ update msg model =
         GotBoundsElement (Err _) ->
             ( model, Cmd.none )
 
-        MouseMove x y ->
+        BoundsMouseMove ( x, y ) ->
             ( { model | mouse = Just ( x, y ) }, Cmd.none )
 
-        MouseOut ->
+        BoundsMouseOut ->
             ( { model | mouse = Nothing }, Cmd.none )
 
+        MouseDown ( x, y ) ->
+            let
+                ( panX, panY ) =
+                    model.pan
+            in
+            ( { model | mouseDown = Just ( panX + x, panY + y ) }, Cmd.none )
 
-svgId : String
-svgId =
-    "svg"
+        MouseUp ->
+            ( { model | mouseDown = Nothing }, Cmd.none )
+
+        MouseMove ( x, y ) ->
+            case model.mouseDown of
+                Just ( startX, startY ) ->
+                    let
+                        dx =
+                            startX - x
+
+                        dy =
+                            startY - y
+                    in
+                    ( { model | pan = ( dx, dy ) }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        Wheel ( delta, ( x, y ) ) ->
+            let
+                zoom =
+                    clamp 0.5 100 model.zoom + delta / 100
+
+                zoomDelta =
+                    zoom - model.zoom
+
+                ( panX, panY ) =
+                    model.pan
+
+                pan =
+                    ( (x - panX) * zoomDelta
+                    , (y - panY) * zoomDelta
+                    )
+            in
+            ( { model | zoom = zoom, pan = pan }, Cmd.none )
+
+
+boundsId : String
+boundsId =
+    "bounds"
 
 
 getBoundsElement : Cmd Msg
 getBoundsElement =
-    Browser.Dom.getElement svgId
+    Browser.Dom.getElement boundsId
         |> Task.attempt GotBoundsElement
 
 
@@ -244,18 +304,31 @@ view model =
         svgHeight =
             max 1 model.boundsElement.element.height
 
+        left =
+            toFloat bounds.left + panX / svgWidth * toFloat width
+
+        top =
+            toFloat bounds.top + panY / svgHeight * toFloat height
+
         mouse =
             Maybe.map
                 (\( x, y ) ->
-                    ( bounds.left + round ((x - model.boundsElement.element.x) / svgWidth * toFloat width)
-                    , bounds.top + round ((y - model.boundsElement.element.y) / svgHeight * toFloat height)
+                    ( round (left + (x - model.boundsElement.element.x) / svgWidth * toFloat width)
+                    , round (top + (y - model.boundsElement.element.y) / svgHeight * toFloat height)
                     )
                 )
                 model.mouse
 
+        ( panX, panY ) =
+            model.pan
+
         viewBox =
-            [ bounds.left, bounds.top, width, height ]
-                |> List.map String.fromInt
+            [ left
+            , top
+            , max 1 (toFloat width / model.zoom)
+            , max 1 (toFloat height / model.zoom)
+            ]
+                |> List.map String.fromFloat
                 |> String.join " "
 
         color index =
@@ -272,6 +345,18 @@ view model =
     Html.div
         [ Attr.style "display" "flex"
         , Attr.style "height" "100%"
+        , Attr.style "cursor"
+            (case model.mouseDown of
+                Just _ ->
+                    "grabbing"
+
+                Nothing ->
+                    "default"
+            )
+        , Html.Events.on "mousedown" (Json.Decode.map MouseDown (skipTextarea mousePositionDecoder))
+        , Html.Events.onMouseUp MouseUp
+        , Html.Events.on "mousemove" (Json.Decode.map MouseMove mousePositionDecoder)
+        , Html.Events.on "wheel" (Json.Decode.map Wheel (skipTextarea wheelDecoder))
         ]
         [ Html.div
             [ Attr.style "flex" "1"
@@ -325,9 +410,9 @@ view model =
                     , SvgAttr.width (String.fromInt width)
                     , SvgAttr.height (String.fromInt height)
                     , SvgAttr.fill "transparent"
-                    , SvgAttr.id svgId
-                    , Svg.Events.on "mousemove" mouseMoveDecoder
-                    , Svg.Events.onMouseOut MouseOut
+                    , SvgAttr.id boundsId
+                    , Svg.Events.on "mousemove" (Json.Decode.map BoundsMouseMove mousePositionDecoder)
+                    , Svg.Events.onMouseOut BoundsMouseOut
                     ]
                     []
                 ]
@@ -335,6 +420,8 @@ view model =
         , Html.textarea
             [ Attr.style "width" "400px"
             , Attr.style "padding" "5px"
+            , Attr.style "position" "relative"
+            , Attr.style "z-index" "1"
             , Html.Events.onInput InputChanged
             , Attr.value model.input
             ]
@@ -371,11 +458,32 @@ viewWire color wire =
         []
 
 
-mouseMoveDecoder : Json.Decode.Decoder Msg
-mouseMoveDecoder =
-    Json.Decode.map2 MouseMove
+skipTextarea : Json.Decode.Decoder a -> Json.Decode.Decoder a
+skipTextarea decoder =
+    Json.Decode.at [ "target", "nodeName" ] Json.Decode.string
+        |> Json.Decode.andThen
+            (\nodeName ->
+                case nodeName of
+                    "TEXTAREA" ->
+                        Json.Decode.fail "Ignored"
+
+                    _ ->
+                        decoder
+            )
+
+
+mousePositionDecoder : Json.Decode.Decoder ( Float, Float )
+mousePositionDecoder =
+    Json.Decode.map2 Tuple.pair
         (Json.Decode.field "pageX" Json.Decode.float)
         (Json.Decode.field "pageY" Json.Decode.float)
+
+
+wheelDecoder : Json.Decode.Decoder ( Float, ( Float, Float ) )
+wheelDecoder =
+    Json.Decode.map2 Tuple.pair
+        (Json.Decode.field "deltaY" Json.Decode.float)
+        mousePositionDecoder
 
 
 subscriptions : Model -> Sub Msg
