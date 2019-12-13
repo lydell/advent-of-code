@@ -259,7 +259,7 @@ update msg model =
         Wheel ( delta, ( x, y ) ) ->
             let
                 zoom =
-                    clamp 0.5 100 model.zoom + delta / 100
+                    clamp 0.5 100 (model.zoom + delta / 100)
 
                 zoomDelta =
                     zoom - model.zoom
@@ -267,12 +267,22 @@ update msg model =
                 ( panX, panY ) =
                     model.pan
 
+                ( posX, posY ) =
+                    ( x - model.boundsElement.element.x
+                    , y - model.boundsElement.element.y
+                    )
+
                 pan =
-                    ( (x - panX) * zoomDelta
-                    , (y - panY) * zoomDelta
+                    ( panX + zoomDelta * posX
+                    , panY + zoomDelta * posY
                     )
             in
-            ( { model | zoom = zoom, pan = pan }, Cmd.none )
+            ( { model
+                | zoom = zoom
+                , pan = pan
+              }
+            , Cmd.none
+            )
 
 
 boundsId : String
@@ -293,40 +303,40 @@ view model =
             model.parsed
 
         width =
-            max 1 (bounds.right - bounds.left)
+            max 1 (toFloat (bounds.right - bounds.left) / model.zoom)
 
         height =
-            max 1 (bounds.bottom - bounds.top)
+            max 1 (toFloat (bounds.bottom - bounds.top) / model.zoom)
 
-        svgWidth =
+        boundsWidth =
             max 1 model.boundsElement.element.width
 
-        svgHeight =
+        boundsHeight =
             max 1 model.boundsElement.element.height
-
-        left =
-            toFloat bounds.left + panX / svgWidth * toFloat width
-
-        top =
-            toFloat bounds.top + panY / svgHeight * toFloat height
-
-        mouse =
-            Maybe.map
-                (\( x, y ) ->
-                    ( round (left + (x - model.boundsElement.element.x) / svgWidth * toFloat width)
-                    , round (top + (y - model.boundsElement.element.y) / svgHeight * toFloat height)
-                    )
-                )
-                model.mouse
 
         ( panX, panY ) =
             model.pan
 
+        left =
+            toFloat bounds.left + panX / boundsWidth * width
+
+        top =
+            toFloat bounds.top + panY / boundsHeight * height
+
+        mouse =
+            Maybe.map
+                (\( x, y ) ->
+                    ( round (left + (x - model.boundsElement.element.x) / boundsWidth * width)
+                    , round (top + (y - model.boundsElement.element.y) / boundsHeight * height)
+                    )
+                )
+                model.mouse
+
         viewBox =
             [ left
             , top
-            , max 1 (toFloat width / model.zoom)
-            , max 1 (toFloat height / model.zoom)
+            , max 1 width
+            , max 1 height
             ]
                 |> List.map String.fromFloat
                 |> String.join " "
@@ -382,7 +392,7 @@ view model =
                 , Svg.circle
                     [ SvgAttr.cx "0"
                     , SvgAttr.cy "0"
-                    , SvgAttr.r (String.fromFloat (8 * toFloat width / svgWidth))
+                    , SvgAttr.r (String.fromFloat (8 * width / boundsWidth))
                     , SvgAttr.fill "none"
                     , SvgAttr.stroke "#fff"
                     , SvgAttr.strokeWidth "4"
@@ -394,7 +404,7 @@ view model =
                         Svg.circle
                             [ SvgAttr.cx (String.fromInt x)
                             , SvgAttr.cy (String.fromInt y)
-                            , SvgAttr.r (String.fromFloat (8 * toFloat width / svgWidth))
+                            , SvgAttr.r (String.fromFloat (8 * width / boundsWidth))
                             , SvgAttr.fill "none"
                             , SvgAttr.stroke "#fff"
                             , SvgAttr.strokeWidth "4"
@@ -405,11 +415,13 @@ view model =
                     Nothing ->
                         Svg.text ""
                 , Svg.rect
-                    [ SvgAttr.x (String.fromInt bounds.left)
-                    , SvgAttr.y (String.fromInt bounds.top)
-                    , SvgAttr.width (String.fromInt width)
-                    , SvgAttr.height (String.fromInt height)
-                    , SvgAttr.fill "transparent"
+                    [ SvgAttr.x (String.fromFloat left)
+                    , SvgAttr.y (String.fromFloat top)
+                    , SvgAttr.width (String.fromFloat width)
+                    , SvgAttr.height (String.fromFloat height)
+
+                    --, SvgAttr.fill "transparent"
+                    , SvgAttr.fill "rgba(155, 0, 0, 0.1)"
                     , SvgAttr.id boundsId
                     , Svg.Events.on "mousemove" (Json.Decode.map BoundsMouseMove mousePositionDecoder)
                     , Svg.Events.onMouseOut BoundsMouseOut
