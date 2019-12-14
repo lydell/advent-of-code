@@ -314,9 +314,12 @@ view model =
             )
         , Html.textarea
             [ Attr.style "width" "400px"
-            , Attr.style "padding" "5px"
+            , Attr.style "padding" "0.5em"
             , Attr.style "position" "relative"
             , Attr.style "z-index" "1"
+            , Attr.style "resize" "none"
+            , Attr.style "border" "none"
+            , Attr.style "border-radius" "0"
             , Html.Events.onInput InputChanged
             , Attr.value model.input
             ]
