@@ -296,19 +296,23 @@ view model =
             case model.mouseDown of
                 Just _ ->
                     [ Attr.style "cursor" "grabbing"
-                    , Html.Events.on "mouseup" (Json.Decode.map MouseUp mousePositionDecoder)
+                    , Html.Events.on "mouseup"
+                        (Json.Decode.map MouseUp mousePositionDecoder)
                     ]
 
                 Nothing ->
                     [ Attr.style "cursor" "default"
-                    , Html.Events.on "mousedown" (Json.Decode.map MouseDown (skipTextarea mousePositionDecoder))
-                    , Html.Events.preventDefaultOn "wheel" (Json.Decode.map (\data -> ( Wheel data, True )) (skipTextarea wheelDecoder))
+                    , Html.Events.on "mousedown"
+                        (Json.Decode.map MouseDown (skipTextarea mousePositionDecoder))
+                    , Html.Events.preventDefaultOn "wheel"
+                        (Json.Decode.map (\data -> ( Wheel data, True )) (skipTextarea wheelDecoder))
                     ]
     in
     Html.div
         ([ Attr.style "display" "flex"
          , Attr.style "height" "100%"
-         , Html.Events.on "mousemove" (Json.Decode.map MouseMove mousePositionDecoder)
+         , Html.Events.on "mousemove"
+            (Json.Decode.map MouseMove mousePositionDecoder)
          ]
             ++ mouseBasedAttrs
         )
