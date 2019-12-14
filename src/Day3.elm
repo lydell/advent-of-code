@@ -145,32 +145,11 @@ main =
 type alias Model =
     { input : String
     , parsed : ( List Wire, Bounds )
-    , boundsElement : Browser.Dom.Element
+    , boundsElement : Maybe Browser.Dom.Element
     , mouse : Maybe ( Float, Float )
     , mouseDown : Maybe ( Float, Float )
     , zoom : Float
     , pan : ( Float, Float )
-    }
-
-
-emptyElement : Browser.Dom.Element
-emptyElement =
-    { scene =
-        { width = 0
-        , height = 0
-        }
-    , viewport =
-        { x = 0
-        , y = 0
-        , width = 0
-        , height = 0
-        }
-    , element =
-        { x = 0
-        , y = 0
-        , width = 0
-        , height = 0
-        }
     }
 
 
@@ -182,7 +161,7 @@ init =
     in
     ( { input = input
       , parsed = parse input
-      , boundsElement = emptyElement
+      , boundsElement = Nothing
       , mouse = Nothing
       , mouseDown = Nothing
       , zoom = 1
@@ -221,10 +200,14 @@ update msg model =
             ( model, getBoundsElement )
 
         GotBoundsElement (Ok element) ->
-            ( { model | boundsElement = element }, Cmd.none )
+            ( { model | boundsElement = Just element }, Cmd.none )
 
-        GotBoundsElement (Err _) ->
-            ( model, Cmd.none )
+        GotBoundsElement (Err error) ->
+            let
+                _ =
+                    Debug.log "GotBoundsElement error" error
+            in
+            ( { model | boundsElement = Nothing }, Cmd.none )
 
         BoundsMouseMove ( x, y ) ->
             ( { model | mouse = Just ( x, y ) }, Cmd.none )
@@ -258,32 +241,37 @@ update msg model =
                     ( model, Cmd.none )
 
         Wheel ( delta, ( x, y ) ) ->
-            let
-                zoom =
-                    clamp 0.5 100 (model.zoom + delta / 100)
+            case model.boundsElement of
+                Just boundsElement ->
+                    let
+                        zoom =
+                            clamp 0.5 100 (model.zoom + delta / 100)
 
-                zoomDelta =
-                    zoom - model.zoom
+                        zoomDelta =
+                            zoom - model.zoom
 
-                ( panX, panY ) =
-                    model.pan
+                        ( panX, panY ) =
+                            model.pan
 
-                ( posX, posY ) =
-                    ( x - model.boundsElement.element.x
-                    , y - model.boundsElement.element.y
+                        ( posX, posY ) =
+                            ( x - boundsElement.element.x
+                            , y - boundsElement.element.y
+                            )
+
+                        pan =
+                            ( panX + zoomDelta * posX
+                            , panY + zoomDelta * posY
+                            )
+                    in
+                    ( { model
+                        | zoom = zoom
+                        , pan = pan
+                      }
+                    , Cmd.none
                     )
 
-                pan =
-                    ( panX + zoomDelta * posX
-                    , panY + zoomDelta * posY
-                    )
-            in
-            ( { model
-                | zoom = zoom
-                , pan = pan
-              }
-            , Cmd.none
-            )
+                Nothing ->
+                    ( model, Cmd.none )
 
 
 boundsId : String
@@ -300,58 +288,6 @@ getBoundsElement =
 view : Model -> Html Msg
 view model =
     let
-        ( wires, bounds ) =
-            model.parsed
-
-        width =
-            max 1 (toFloat (bounds.right - bounds.left) / model.zoom)
-
-        height =
-            max 1 (toFloat (bounds.bottom - bounds.top) / model.zoom)
-
-        boundsWidth =
-            max 1 model.boundsElement.element.width
-
-        boundsHeight =
-            max 1 model.boundsElement.element.height
-
-        pxPerUnit =
-            boundsWidth / width
-
-        ( panX, panY ) =
-            model.pan
-
-        left =
-            toFloat bounds.left + panX / boundsWidth * width
-
-        top =
-            toFloat bounds.top + panY / boundsHeight * height
-
-        mouse =
-            Maybe.map
-                (\( x, y ) ->
-                    ( round (left + (x - model.boundsElement.element.x) / boundsWidth * width)
-                    , round (top + (y - model.boundsElement.element.y) / boundsHeight * height)
-                    )
-                )
-                model.mouse
-
-        viewBox =
-            [ left, top, width, height ]
-                |> List.map String.fromFloat
-                |> String.join " "
-
-        color index =
-            let
-                deg =
-                    (toFloat index / toFloat (List.length wires) * 360)
-                        |> String.fromFloat
-            in
-            "hsl(" ++ deg ++ "deg, 100%, 50%)"
-
-        wiresSvg =
-            List.indexedMap (\index wire -> viewWire (color index) pxPerUnit wire) wires
-
         mouseBasedAttrs =
             case model.mouseDown of
                 Just _ ->
@@ -377,60 +313,14 @@ view model =
             , Attr.style "position" "relative"
             , Attr.style "margin-right" "30px"
             ]
-            [ case mouse of
-                Just ( x, y ) ->
-                    Html.text (String.fromInt (abs x + abs y))
+            (case model.boundsElement of
+                Just boundsElement ->
+                    viewSvg boundsElement model
 
                 Nothing ->
-                    Html.text ""
-            , Svg.svg
-                [ Attr.style "position" "absolute"
-                , Attr.style "top" "0"
-                , Attr.style "left" "0"
-                , Attr.style "width" "100%"
-                , Attr.style "height" "100%"
-                , Attr.style "overflow" "visible"
-                , SvgAttr.viewBox viewBox
-                ]
-                [ Svg.Keyed.node "g" [] wiresSvg
-                , Svg.circle
-                    [ SvgAttr.cx "0"
-                    , SvgAttr.cy "0"
-                    , SvgAttr.r (String.fromFloat (8 * width / boundsWidth))
-                    , SvgAttr.fill "none"
-                    , SvgAttr.stroke "#fff"
-                    , SvgAttr.strokeWidth "4"
-                    , Attr.attribute "vector-effect" "non-scaling-stroke"
-                    ]
-                    []
-                , case mouse of
-                    Just ( x, y ) ->
-                        Svg.circle
-                            [ SvgAttr.cx (String.fromInt x)
-                            , SvgAttr.cy (String.fromInt y)
-                            , SvgAttr.r (String.fromFloat (8 * width / boundsWidth))
-                            , SvgAttr.fill "none"
-                            , SvgAttr.stroke "#fff"
-                            , SvgAttr.strokeWidth "4"
-                            , Attr.attribute "vector-effect" "non-scaling-stroke"
-                            ]
-                            []
-
-                    Nothing ->
-                        Svg.text ""
-                , Svg.rect
-                    [ SvgAttr.x (String.fromFloat left)
-                    , SvgAttr.y (String.fromFloat top)
-                    , SvgAttr.width (String.fromFloat width)
-                    , SvgAttr.height (String.fromFloat height)
-                    , SvgAttr.fill "transparent"
-                    , SvgAttr.id boundsId
-                    , Svg.Events.on "mousemove" (Json.Decode.map BoundsMouseMove mousePositionDecoder)
-                    , Svg.Events.onMouseOut BoundsMouseOut
-                    ]
-                    []
-                ]
-            ]
+                    -- View an empty SVG element so we can measure it.
+                    [ viewSvgElement (getViewBox (Tuple.second model.parsed) model.pan model.zoom) [] ]
+            )
         , Html.textarea
             [ Attr.style "width" "400px"
             , Attr.style "padding" "5px"
@@ -443,8 +333,150 @@ view model =
         ]
 
 
-viewWire : String -> Float -> Wire -> ( String, Svg Msg )
-viewWire color pxPerUnit wire =
+viewSvg : Browser.Dom.Element -> Model -> List (Html Msg)
+viewSvg boundsElement model =
+    let
+        ( wires, bounds ) =
+            model.parsed
+
+        ( panX, panY ) =
+            model.pan
+
+        boundsWidth =
+            max 1 boundsElement.element.width
+
+        boundsHeight =
+            max 1 boundsElement.element.height
+
+        viewBox =
+            getViewBox bounds ( panX / boundsWidth, panY / boundsHeight ) model.zoom
+
+        mouse =
+            Maybe.map
+                (\( x, y ) ->
+                    ( round (viewBox.left + (x - boundsElement.element.x) / boundsWidth * viewBox.width)
+                    , round (viewBox.top + (y - boundsElement.element.y) / boundsHeight * viewBox.height)
+                    )
+                )
+                model.mouse
+
+        color index =
+            let
+                deg =
+                    (toFloat index / toFloat (List.length wires) * 360)
+                        |> String.fromFloat
+            in
+            "hsl(" ++ deg ++ "deg, 100%, 50%)"
+
+        pxPerUnit =
+            -- Only animate when not zoomed to avoid more animations when zooming in.
+            if model.zoom == 1 then
+                Just (boundsWidth / viewBox.width)
+
+            else
+                Nothing
+
+        wiresSvg =
+            List.indexedMap (\index wire -> viewWire (color index) pxPerUnit wire) wires
+    in
+    [ case mouse of
+        Just ( x, y ) ->
+            Html.text (String.fromInt (abs x + abs y))
+
+        Nothing ->
+            Html.text ""
+    , viewSvgElement viewBox
+        [ Svg.Keyed.node "g" [] wiresSvg
+        , Svg.circle
+            [ SvgAttr.cx "0"
+            , SvgAttr.cy "0"
+            , SvgAttr.r (String.fromFloat (8 * viewBox.width / boundsWidth))
+            , SvgAttr.fill "none"
+            , SvgAttr.stroke "#fff"
+            , SvgAttr.strokeWidth "4"
+            , Attr.attribute "vector-effect" "non-scaling-stroke"
+            ]
+            []
+        , case mouse of
+            Just ( x, y ) ->
+                Svg.circle
+                    [ SvgAttr.cx (String.fromInt x)
+                    , SvgAttr.cy (String.fromInt y)
+                    , SvgAttr.r (String.fromFloat (8 * viewBox.width / boundsWidth))
+                    , SvgAttr.fill "none"
+                    , SvgAttr.stroke "#fff"
+                    , SvgAttr.strokeWidth "4"
+                    , Attr.attribute "vector-effect" "non-scaling-stroke"
+                    ]
+                    []
+
+            Nothing ->
+                Svg.text ""
+        ]
+    ]
+
+
+getViewBox : Bounds -> ( Float, Float ) -> Float -> ViewBox
+getViewBox bounds ( panX, panY ) zoom =
+    let
+        left =
+            toFloat bounds.left + panX * width
+
+        top =
+            toFloat bounds.top + panY * height
+
+        width =
+            max 1 (toFloat (bounds.right - bounds.left) / zoom)
+
+        height =
+            max 1 (toFloat (bounds.bottom - bounds.top) / zoom)
+    in
+    { left = left, top = top, width = width, height = height }
+
+
+type alias ViewBox =
+    { left : Float
+    , top : Float
+    , width : Float
+    , height : Float
+    }
+
+
+viewSvgElement : ViewBox -> List (Svg Msg) -> Svg Msg
+viewSvgElement viewBox children =
+    let
+        viewBoxAttr =
+            [ viewBox.left, viewBox.top, viewBox.width, viewBox.height ]
+                |> List.map String.fromFloat
+                |> String.join " "
+    in
+    Svg.svg
+        [ Attr.style "position" "absolute"
+        , Attr.style "top" "0"
+        , Attr.style "left" "0"
+        , Attr.style "width" "100%"
+        , Attr.style "height" "100%"
+        , Attr.style "overflow" "visible"
+        , SvgAttr.viewBox viewBoxAttr
+        ]
+        (children
+            ++ [ Svg.rect
+                    [ SvgAttr.x (String.fromFloat viewBox.left)
+                    , SvgAttr.y (String.fromFloat viewBox.top)
+                    , SvgAttr.width (String.fromFloat viewBox.width)
+                    , SvgAttr.height (String.fromFloat viewBox.height)
+                    , SvgAttr.fill "rgba(255,0,0,0.2)"
+                    , SvgAttr.id boundsId
+                    , Svg.Events.on "mousemove" (Json.Decode.map BoundsMouseMove mousePositionDecoder)
+                    , Svg.Events.onMouseOut BoundsMouseOut
+                    ]
+                    []
+               ]
+        )
+
+
+viewWire : String -> Maybe Float -> Wire -> ( String, Svg Msg )
+viewWire color maybePxPerUnit wire =
     let
         d =
             "M 0,0"
@@ -460,37 +492,48 @@ viewWire color pxPerUnit wire =
                     wire
                 |> String.join " "
 
-        length =
-            wire
-                |> List.map
-                    (\move ->
-                        case move of
-                            Horizontal int ->
-                                abs int
+        animation =
+            case maybePxPerUnit of
+                Just pxPerUnit ->
+                    let
+                        length =
+                            wire
+                                |> List.map
+                                    (\move ->
+                                        case move of
+                                            Horizontal int ->
+                                                abs int
 
-                            Vertical int ->
-                                abs int
-                    )
-                |> List.sum
-                |> toFloat
-                |> (*) pxPerUnit
+                                            Vertical int ->
+                                                abs int
+                                    )
+                                |> List.sum
+                                |> toFloat
+                                |> (*) pxPerUnit
 
-        duration =
-            length / 2000
+                        duration =
+                            length / 2000
+                    in
+                    [ Attr.style "stroke-dasharray" (String.fromFloat length)
+                    , Attr.style "stroke-dashoffset" (String.fromFloat length)
+                    , Attr.style "animation" ("draw " ++ String.fromFloat duration ++ "s linear forwards")
+                    ]
+
+                Nothing ->
+                    []
     in
     ( d
     , Svg.path
-        [ SvgAttr.d d
-        , SvgAttr.fill "none"
-        , SvgAttr.stroke color
-        , SvgAttr.strokeWidth "4"
-        , Attr.attribute "vector-effect" "non-scaling-stroke"
-        , SvgAttr.strokeLinecap "round"
-        , SvgAttr.strokeLinejoin "round"
-        , Attr.style "stroke-dasharray" (String.fromFloat length)
-        , Attr.style "stroke-dashoffset" (String.fromFloat length)
-        , Attr.style "animation" ("draw " ++ String.fromFloat duration ++ "s linear forwards")
-        ]
+        ([ SvgAttr.d d
+         , SvgAttr.fill "none"
+         , SvgAttr.stroke color
+         , SvgAttr.strokeWidth "4"
+         , Attr.attribute "vector-effect" "non-scaling-stroke"
+         , SvgAttr.strokeLinecap "round"
+         , SvgAttr.strokeLinejoin "round"
+         ]
+            ++ animation
+        )
         []
     )
 
