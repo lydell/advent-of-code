@@ -248,7 +248,7 @@ update msg model =
                 Just boundsElement ->
                     let
                         zoom =
-                            clamp 0.5 100 (model.zoom + delta / 100)
+                            clamp 0.5 100 (model.zoom - delta / 100)
 
                         ( panX, panY ) =
                             model.pan
