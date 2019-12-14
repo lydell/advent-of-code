@@ -337,11 +337,7 @@ view model =
                 model.mouse
 
         viewBox =
-            [ left
-            , top
-            , max 1 width
-            , max 1 height
-            ]
+            [ left, top, width, height ]
                 |> List.map String.fromFloat
                 |> String.join " "
 
@@ -355,23 +351,27 @@ view model =
 
         wiresSvg =
             List.indexedMap (\index wire -> viewWire (color index) pxPerUnit wire) wires
-    in
-    Html.div
-        [ Attr.style "display" "flex"
-        , Attr.style "height" "100%"
-        , Attr.style "cursor"
-            (case model.mouseDown of
+
+        mouseBasedAttrs =
+            case model.mouseDown of
                 Just _ ->
-                    "grabbing"
+                    [ Attr.style "cursor" "grabbing"
+                    , Html.Events.onMouseUp MouseUp
+                    , Html.Events.on "mousemove" (Json.Decode.map MouseMove mousePositionDecoder)
+                    ]
 
                 Nothing ->
-                    "default"
-            )
-        , Html.Events.on "mousedown" (Json.Decode.map MouseDown (skipTextarea mousePositionDecoder))
-        , Html.Events.onMouseUp MouseUp
-        , Html.Events.on "mousemove" (Json.Decode.map MouseMove mousePositionDecoder)
-        , Html.Events.on "wheel" (Json.Decode.map Wheel (skipTextarea wheelDecoder))
-        ]
+                    [ Attr.style "cursor" "default"
+                    , Html.Events.on "mousedown" (Json.Decode.map MouseDown (skipTextarea mousePositionDecoder))
+                    , Html.Events.on "wheel" (Json.Decode.map Wheel (skipTextarea wheelDecoder))
+                    ]
+    in
+    Html.div
+        ([ Attr.style "display" "flex"
+         , Attr.style "height" "100%"
+         ]
+            ++ mouseBasedAttrs
+        )
         [ Html.div
             [ Attr.style "flex" "1"
             , Attr.style "position" "relative"
@@ -461,16 +461,16 @@ viewWire color pxPerUnit wire =
                 |> String.join " "
 
         length =
-            List.map
-                (\move ->
-                    case move of
-                        Horizontal int ->
-                            abs int
+            wire
+                |> List.map
+                    (\move ->
+                        case move of
+                            Horizontal int ->
+                                abs int
 
-                        Vertical int ->
-                            abs int
-                )
-                wire
+                            Vertical int ->
+                                abs int
+                    )
                 |> List.sum
                 |> toFloat
                 |> (*) pxPerUnit
