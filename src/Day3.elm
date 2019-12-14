@@ -248,7 +248,7 @@ update msg model =
                 Just boundsElement ->
                     let
                         zoom =
-                            clamp 0.5 100 (model.zoom - delta / 100)
+                            clamp minZoom maxZoom (model.zoom - delta / 100)
 
                         ( panX, panY ) =
                             model.pan
@@ -272,6 +272,16 @@ update msg model =
 
                 Nothing ->
                     ( model, Cmd.none )
+
+
+minZoom : Float
+minZoom =
+    0.5
+
+
+maxZoom : Float
+maxZoom =
+    100
 
 
 boundsId : String
@@ -350,7 +360,7 @@ viewSvg boundsElement model =
             max 1 boundsElement.element.width
 
         boundsHeight =
-            max 1 boundsElement.element.height
+            boundsElement.element.height
 
         viewBox =
             getViewBox bounds model.pan model.zoom
@@ -429,10 +439,10 @@ getViewBox : Bounds -> ( Float, Float ) -> Float -> ViewBox
 getViewBox bounds ( panX, panY ) zoom =
     let
         width =
-            max 1 (toFloat (bounds.right - bounds.left) / zoom)
+            max (1 / maxZoom) (toFloat (bounds.right - bounds.left) / zoom)
 
         height =
-            max 1 (toFloat (bounds.bottom - bounds.top) / zoom)
+            max (1 / maxZoom) (toFloat (bounds.bottom - bounds.top) / zoom)
 
         left =
             toFloat bounds.left + panX * width * zoom
