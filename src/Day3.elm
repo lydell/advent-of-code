@@ -302,7 +302,7 @@ view model =
                 Nothing ->
                     [ Attr.style "cursor" "default"
                     , Html.Events.on "mousedown" (Json.Decode.map MouseDown (skipTextarea mousePositionDecoder))
-                    , Html.Events.on "wheel" (Json.Decode.map Wheel (skipTextarea wheelDecoder))
+                    , Html.Events.preventDefaultOn "wheel" (Json.Decode.map (\data -> ( Wheel data, True )) (skipTextarea wheelDecoder))
                     ]
     in
     Html.div
