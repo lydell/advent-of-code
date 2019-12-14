@@ -128,7 +128,7 @@ parseMove string =
                 |> Maybe.map Horizontal
 
         _ ->
-            Debug.todo ("Invalid move: " ++ string)
+            Nothing
 
 
 main : Program () Model Msg
@@ -200,10 +200,6 @@ update msg model =
             ( { model | boundsElement = Just element }, Cmd.none )
 
         GotBoundsElement (Err error) ->
-            let
-                _ =
-                    Debug.log "GotBoundsElement error" error
-            in
             ( { model | boundsElement = Nothing }, Cmd.none )
 
         MouseDown ( x, y ) ->
