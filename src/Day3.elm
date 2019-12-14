@@ -381,7 +381,12 @@ viewSvg boundsElement model =
     in
     [ case mouse of
         Just ( x, y ) ->
-            Html.text (String.fromInt (abs x + abs y))
+            Html.span
+                [ Attr.style "position" "relative"
+                , Attr.style "z-index" "1"
+                , Attr.style "background-color" "#0f0f23"
+                ]
+                [ Html.text (String.fromInt (abs x + abs y)) ]
 
         Nothing ->
             Html.text ""
