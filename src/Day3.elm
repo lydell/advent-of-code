@@ -11,6 +11,7 @@ import Json.Decode
 import Svg exposing (Svg)
 import Svg.Attributes as SvgAttr
 import Svg.Events
+import Svg.Keyed
 import Task exposing (Task)
 
 
@@ -314,6 +315,9 @@ view model =
         boundsHeight =
             max 1 model.boundsElement.element.height
 
+        pxPerUnit =
+            boundsWidth / width
+
         ( panX, panY ) =
             model.pan
 
@@ -350,7 +354,7 @@ view model =
             "hsla(" ++ deg ++ "deg, 100%, 50%, 0.5)"
 
         wiresSvg =
-            List.indexedMap (\index wire -> viewWire (color index) wire) wires
+            List.indexedMap (\index wire -> viewWire (color index) pxPerUnit wire) wires
     in
     Html.div
         [ Attr.style "display" "flex"
@@ -388,7 +392,7 @@ view model =
                 , Attr.style "overflow" "visible"
                 , SvgAttr.viewBox viewBox
                 ]
-                [ Svg.g [] wiresSvg
+                [ Svg.Keyed.node "g" [] wiresSvg
                 , Svg.circle
                     [ SvgAttr.cx "0"
                     , SvgAttr.cy "0"
@@ -419,9 +423,7 @@ view model =
                     , SvgAttr.y (String.fromFloat top)
                     , SvgAttr.width (String.fromFloat width)
                     , SvgAttr.height (String.fromFloat height)
-
-                    --, SvgAttr.fill "transparent"
-                    , SvgAttr.fill "rgba(155, 0, 0, 0.1)"
+                    , SvgAttr.fill "transparent"
                     , SvgAttr.id boundsId
                     , Svg.Events.on "mousemove" (Json.Decode.map BoundsMouseMove mousePositionDecoder)
                     , Svg.Events.onMouseOut BoundsMouseOut
@@ -441,8 +443,8 @@ view model =
         ]
 
 
-viewWire : String -> Wire -> Svg Msg
-viewWire color wire =
+viewWire : String -> Float -> Wire -> ( String, Svg Msg )
+viewWire color pxPerUnit wire =
     let
         d =
             "M 0,0"
@@ -457,8 +459,27 @@ viewWire color wire =
                     )
                     wire
                 |> String.join " "
+
+        length =
+            List.map
+                (\move ->
+                    case move of
+                        Horizontal int ->
+                            abs int
+
+                        Vertical int ->
+                            abs int
+                )
+                wire
+                |> List.sum
+                |> toFloat
+                |> (*) pxPerUnit
+
+        duration =
+            length / 2000
     in
-    Svg.path
+    ( d
+    , Svg.path
         [ SvgAttr.d d
         , SvgAttr.fill "none"
         , SvgAttr.stroke color
@@ -466,8 +487,12 @@ viewWire color wire =
         , Attr.attribute "vector-effect" "non-scaling-stroke"
         , SvgAttr.strokeLinecap "round"
         , SvgAttr.strokeLinejoin "round"
+        , Attr.style "stroke-dasharray" (String.fromFloat length)
+        , Attr.style "stroke-dashoffset" (String.fromFloat length)
+        , Attr.style "animation" ("draw " ++ String.fromFloat duration ++ "s linear forwards")
         ]
         []
+    )
 
 
 skipTextarea : Json.Decode.Decoder a -> Json.Decode.Decoder a
