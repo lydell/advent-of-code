@@ -207,11 +207,22 @@ update msg model =
             ( { model | boundsElement = Nothing }, Cmd.none )
 
         MouseDown ( x, y ) ->
-            let
-                ( panX, panY ) =
-                    model.pan
-            in
-            ( { model | mouseDown = Just ( panX + x, panY + y ) }, Cmd.none )
+            case model.boundsElement of
+                Just boundsElement ->
+                    let
+                        ( panX, panY ) =
+                            model.pan
+
+                        dx =
+                            panX + x / boundsElement.element.width / model.zoom
+
+                        dy =
+                            panY + y / boundsElement.element.height / model.zoom
+                    in
+                    ( { model | mouseDown = Just ( dx, dy ) }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         MouseUp ( x, y ) ->
             ( { model | mouse = Just ( x, y ), mouseDown = Nothing }, Cmd.none )
@@ -219,14 +230,19 @@ update msg model =
         MouseMove ( x, y ) ->
             case model.mouseDown of
                 Just ( startX, startY ) ->
-                    let
-                        dx =
-                            startX - x
+                    case model.boundsElement of
+                        Just boundsElement ->
+                            let
+                                dx =
+                                    startX - x / boundsElement.element.width / model.zoom
 
-                        dy =
-                            startY - y
-                    in
-                    ( { model | mouse = Nothing, pan = ( dx, dy ) }, Cmd.none )
+                                dy =
+                                    startY - y / boundsElement.element.height / model.zoom
+                            in
+                            ( { model | mouse = Nothing, pan = ( dx, dy ) }, Cmd.none )
+
+                        Nothing ->
+                            ( model, Cmd.none )
 
                 Nothing ->
                     ( { model | mouse = Just ( x, y ) }, Cmd.none )
@@ -238,20 +254,17 @@ update msg model =
                         zoom =
                             clamp 0.5 100 (model.zoom + delta / 100)
 
-                        zoomDelta =
-                            zoom - model.zoom
-
                         ( panX, panY ) =
                             model.pan
 
                         ( posX, posY ) =
-                            ( x - boundsElement.element.x
-                            , y - boundsElement.element.y
+                            ( (x - boundsElement.element.x) / boundsElement.element.width
+                            , (y - boundsElement.element.y) / boundsElement.element.height
                             )
 
                         pan =
-                            ( panX + zoomDelta * posX
-                            , panY + zoomDelta * posY
+                            ( panX + posX / model.zoom - posX / zoom
+                            , panY + posY / model.zoom - posY / zoom
                             )
                     in
                     ( { model
@@ -333,9 +346,6 @@ viewSvg boundsElement model =
         ( wires, bounds ) =
             model.parsed
 
-        ( panX, panY ) =
-            model.pan
-
         boundsWidth =
             max 1 boundsElement.element.width
 
@@ -343,7 +353,7 @@ viewSvg boundsElement model =
             max 1 boundsElement.element.height
 
         viewBox =
-            getViewBox bounds ( panX / boundsWidth, panY / boundsHeight ) model.zoom
+            getViewBox bounds model.pan model.zoom
 
         mouse =
             Maybe.map
@@ -418,17 +428,17 @@ viewSvg boundsElement model =
 getViewBox : Bounds -> ( Float, Float ) -> Float -> ViewBox
 getViewBox bounds ( panX, panY ) zoom =
     let
-        left =
-            toFloat bounds.left + panX * width
-
-        top =
-            toFloat bounds.top + panY * height
-
         width =
             max 1 (toFloat (bounds.right - bounds.left) / zoom)
 
         height =
             max 1 (toFloat (bounds.bottom - bounds.top) / zoom)
+
+        left =
+            toFloat bounds.left + panX * width * zoom
+
+        top =
+            toFloat bounds.top + panY * height * zoom
     in
     { left = left, top = top, width = width, height = height }
 
@@ -464,7 +474,7 @@ viewSvgElement viewBox children =
                     , SvgAttr.y (String.fromFloat viewBox.top)
                     , SvgAttr.width (String.fromFloat viewBox.width)
                     , SvgAttr.height (String.fromFloat viewBox.height)
-                    , SvgAttr.fill "rgba(255,0,0,0.2)"
+                    , SvgAttr.fill "transparent"
                     , SvgAttr.id boundsId
                     ]
                     []
