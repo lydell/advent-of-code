@@ -351,7 +351,7 @@ view model =
                     (toFloat index / toFloat (List.length wires) * 360)
                         |> String.fromFloat
             in
-            "hsla(" ++ deg ++ "deg, 100%, 50%, 0.5)"
+            "hsl(" ++ deg ++ "deg, 100%, 50%)"
 
         wiresSvg =
             List.indexedMap (\index wire -> viewWire (color index) pxPerUnit wire) wires
