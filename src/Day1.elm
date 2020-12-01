@@ -48,23 +48,23 @@ solution2 =
 
 solve2 : Int -> List Int -> Maybe Int
 solve2 target list =
-    solve2Helper target (Set.fromList list) list
+    solve2Helper target list
         |> Maybe.map (\( a, b, c ) -> a * b * c)
 
 
-solve2Helper : Int -> Set Int -> List Int -> Maybe ( Int, Int, Int )
-solve2Helper target set list =
+solve2Helper : Int -> List Int -> Maybe ( Int, Int, Int )
+solve2Helper target list =
     case list of
         [] ->
             Nothing
 
         first :: rest ->
-            case solve1Helper (target - first) set list of
+            case solve1Helper (target - first) (Set.fromList rest) rest of
                 Just ( a, b ) ->
                     Just ( a, b, target - a - b )
 
                 Nothing ->
-                    solve2Helper target set rest
+                    solve2Helper target rest
 
 
 main : Html Never
