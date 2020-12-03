@@ -26,5 +26,6 @@ body > :first-child {
 }
 
 output {
+  display: block;
   white-space: pre-wrap;
 }

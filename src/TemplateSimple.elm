@@ -10,7 +10,7 @@ solution1 input =
 
 main : Html Never
 main =
-    Html.output []
+    Html.div []
         [ showResult (solution1 puzzleInput)
         ]
 

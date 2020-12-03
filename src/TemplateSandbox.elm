@@ -42,7 +42,7 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    Html.output []
+    Html.div []
         [ showResult (solution1 puzzleInput)
         ]
 

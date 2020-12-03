@@ -7,7 +7,7 @@ parse parser input =
         results =
             input
                 |> String.trim
-                |> String.split "\n"
+                |> String.lines
                 |> List.indexedMap (\index line -> ( index, line, parser line ))
 
         errors =
