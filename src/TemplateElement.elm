@@ -4,9 +4,9 @@ import Browser
 import Html exposing (Html)
 
 
-solution1 : String -> Int
+solution1 : String -> Result String Int
 solution1 input =
-    42
+    Ok 42
 
 
 main : Program () Model Msg
@@ -45,7 +45,23 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    Html.div [] [ Html.text (String.fromInt (solution1 puzzleInput)) ]
+    Html.output []
+        [ showResult (solution1 puzzleInput)
+        ]
+
+
+showResult : Result String Int -> Html msg
+showResult result =
+    Html.output []
+        [ Html.text
+            (case result of
+                Ok int ->
+                    String.fromInt int
+
+                Err error ->
+                    error
+            )
+        ]
 
 
 subscriptions : Model -> Sub Msg

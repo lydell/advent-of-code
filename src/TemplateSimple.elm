@@ -3,14 +3,30 @@ module TemplateSimple exposing (..)
 import Html exposing (Html)
 
 
-solution1 : String -> Int
+solution1 : String -> Result String Int
 solution1 input =
-    42
+    Ok 42
 
 
 main : Html Never
 main =
-    Html.div [] [ Html.text (String.fromInt (solution1 puzzleInput)) ]
+    Html.output []
+        [ showResult (solution1 puzzleInput)
+        ]
+
+
+showResult : Result String Int -> Html msg
+showResult result =
+    Html.output []
+        [ Html.text
+            (case result of
+                Ok int ->
+                    String.fromInt int
+
+                Err error ->
+                    error
+            )
+        ]
 
 
 puzzleInput : String

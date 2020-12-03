@@ -24,3 +24,7 @@ a:hover {
 body > :first-child {
   padding: 50px;
 }
+
+output {
+  white-space: pre-wrap;
+}
