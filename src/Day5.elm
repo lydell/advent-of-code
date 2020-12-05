@@ -38,8 +38,12 @@ solution2 input =
 
         all =
             List.range min max
+                |> Set.fromList
     in
-    all |> List.filter (\id -> not (List.member id ids))
+    ids
+        |> Set.fromList
+        |> Set.diff all
+        |> Set.toList
 
 
 main : Html Never
