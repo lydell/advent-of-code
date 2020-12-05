@@ -1,12 +1,20 @@
-const solution1 = (input) =>
-  Math.max(
-    ...input
-      .trim()
-      .replace(/[BR]/g, "1")
-      .replace(/[FL]/g, "0")
-      .split("\n")
-      .map((line) => parseInt(line, 2))
-  );
+const parse = (input) =>
+  input
+    .trim()
+    .replace(/[BR]/g, "1")
+    .replace(/[FL]/g, "0")
+    .split("\n")
+    .map((line) => parseInt(line, 2));
+
+const solution1 = (input) => Math.max(...parse(input));
+
+const solution2 = (input) => {
+  const ids = parse(input);
+  const min = Math.min(...ids);
+  const max = Math.max(...ids);
+  const all = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+  return all.filter((id) => !ids.includes(id));
+};
 
 const puzzleInput = `
 FBFFBFFRLL
@@ -957,3 +965,4 @@ FBBFBBFLRL
 `;
 
 console.log(solution1(puzzleInput));
+console.log(solution2(puzzleInput));
