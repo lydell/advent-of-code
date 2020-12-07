@@ -6,56 +6,26 @@ import Graph exposing (Graph)
 import Graph.DOT
 import Html exposing (Html)
 import Html.Attributes
+import IntDict
 import LineParser
 import List.Extra as List
 
 
 type alias Bag =
+    -- ( "shiny", "gold" ) for example
     ( String, String )
 
 
-parse : List ( Bag, List ( Int, Bag ) ) -> ( Bag -> Int, Graph Bag Int )
-parse lines =
-    let
-        idDict : Dict Bag Int
-        idDict =
-            lines
-                |> List.indexedMap (\index ( bag, _ ) -> ( bag, index ))
-                |> Dict.fromList
-
-        getId : Bag -> Int
-        getId bag =
-            Dict.get bag idDict |> Maybe.withDefault -1
-
-        nodes =
-            lines
-                |> List.map (\( bag, _ ) -> Graph.Node (getId bag) bag)
-
-        edges =
-            lines
-                |> List.concatMap
-                    (\( bag, bagsWithNumbers ) ->
-                        let
-                            fromId =
-                                getId bag
-                        in
-                        bagsWithNumbers
-                            |> List.map
-                                (\( number, subBag ) ->
-                                    let
-                                        toId =
-                                            getId subBag
-                                    in
-                                    Graph.Edge fromId toId number
-                                )
-                    )
-    in
-    ( getId
-    , Graph.fromNodesAndEdges nodes edges
-    )
+type alias BagCount =
+    Int
 
 
-parseLines : String -> Result String (List ( Bag, List ( Int, Bag ) ))
+parse : String -> Result String ( Dict Bag Graph.NodeId, Graph Bag BagCount )
+parse =
+    parseLines >> Result.map makeGraph
+
+
+parseLines : String -> Result String (List ( Bag, List ( BagCount, Bag ) ))
 parseLines =
     LineParser.parse
         (\line ->
@@ -83,9 +53,9 @@ parseLines =
                                                     String.toInt first
                                                         |> Result.fromMaybe "First word is not a number."
                                                         |> Result.andThen
-                                                            (\number ->
+                                                            (\bagCount ->
                                                                 parseBag rest
-                                                                    |> Result.map (Tuple.pair number)
+                                                                    |> Result.map (Tuple.pair bagCount)
                                                             )
                                         )
                     in
@@ -94,7 +64,12 @@ parseLines =
                         right
 
                 parts ->
-                    Err ("Expected 2 parts but got " ++ String.fromInt (List.length parts) ++ ": " ++ String.join " /// " parts)
+                    Err
+                        ("Expected 2 parts separated by 'contain' but got "
+                            ++ String.fromInt (List.length parts)
+                            ++ ": "
+                            ++ String.join " /// " parts
+                        )
         )
 
 
@@ -120,90 +95,106 @@ removeEnding end string =
         string
 
 
+makeGraph : List ( Bag, List ( BagCount, Bag ) ) -> ( Dict Bag Graph.NodeId, Graph Bag BagCount )
+makeGraph lines =
+    let
+        idDict : Dict Bag Graph.NodeId
+        idDict =
+            lines
+                |> List.indexedMap (\index ( bag, _ ) -> ( bag, index ))
+                |> Dict.fromList
 
--- solution1_old : String -> Result String Int
--- solution1_old =
---     parseLines
---         >> Result.map parse
---         >> Result.andThen
---             (Graph.checkAcyclic
---                 >> Result.mapError
---                     (\{ from, to, label } ->
---                         "Graph is cyclic: "
---                             ++ String.fromInt from
---                             ++ "->"
---                             ++ String.fromInt to
---                             ++ " ("
---                             ++ String.fromInt label
---                             ++ ")"
---                     )
---             )
---         >> Result.map
---             (Graph.heightLevels
---                 >> List.map (List.map (.node >> .label))
---                 >> List.takeWhile (not << List.member ( "shiny", "gold" ))
---                 >> List.concat
---                 >> List.length
---             )
--- solution1 : String -> Result String (List a)
+        getId : Bag -> Graph.NodeId
+        getId bag =
+            Dict.get bag idDict |> Maybe.withDefault -1
+
+        nodes : List (Graph.Node Bag)
+        nodes =
+            lines
+                |> List.map (\( bag, _ ) -> Graph.Node (getId bag) bag)
+
+        edges : List (Graph.Edge BagCount)
+        edges =
+            lines
+                |> List.concatMap
+                    (\( bag, bagsWithCounts ) ->
+                        bagsWithCounts
+                            |> List.map
+                                (\( bagCount, subBag ) ->
+                                    Graph.Edge (getId bag) (getId subBag) bagCount
+                                )
+                    )
+    in
+    ( idDict
+    , Graph.fromNodesAndEdges nodes edges
+    )
 
 
+solution1 : String -> Result String Int
 solution1 =
-    parseLines
-        >> Result.map
-            (\lines ->
-                let
-                    ( getId, graph ) =
-                        parse lines
-
-                    answer =
-                        Graph.guidedDfs Graph.alongIncomingEdges (Graph.onFinish (::)) [ getId ( "shiny", "gold" ) ] [] graph
-                            |> Tuple.first
-                            |> List.drop 1
-                            |> List.map (.node >> .label)
-                            |> List.length
-                in
-                ( answer, graph )
+    parse
+        >> Result.andThen
+            (\( idDict, graph ) ->
+                Dict.get ( "shiny", "gold" ) idDict
+                    |> Result.fromMaybe "shiny gold not found"
+                    |> Result.map
+                        (\id ->
+                            Graph.guidedDfs
+                                Graph.alongIncomingEdges
+                                (Graph.onFinish (::))
+                                [ id ]
+                                []
+                                graph
+                                |> Tuple.first
+                                |> List.drop 1
+                                |> List.length
+                        )
             )
+
+
+solution2 : String -> Result String Int
+solution2 =
+    parse
+        >> Result.andThen
+            (\( idDict, graph ) ->
+                Dict.get ( "shiny", "gold" ) idDict
+                    |> Result.fromMaybe "shiny gold not found"
+                    |> Result.map (countBags graph)
+            )
+
+
+countBags : Graph Bag Int -> Graph.NodeId -> Int
+countBags graph id =
+    Graph.get id graph
+        |> Maybe.map
+            (.outgoing
+                >> IntDict.toList
+                >> List.map
+                    (\( subId, count ) ->
+                        count * (1 + countBags graph subId)
+                    )
+                >> List.sum
+            )
+        |> Maybe.withDefault 0
 
 
 main : Html Never
 main =
     Html.div []
         [ showResult (solution1 puzzleInput)
+        , showResult (solution2 puzzleInput)
         ]
 
 
-showResult : Result String ( a, Graph Bag Int ) -> Html msg
+showResult : Result String Int -> Html msg
 showResult result =
     Html.output []
-        (case result of
-            Ok ( x, graph ) ->
-                [ Html.div [] [ Html.text (Debug.toString x) ]
-                , Html.div [ Html.Attributes.style "margin-top" "50px" ]
-                    [ Html.text
-                        (Graph.DOT.output
-                            (\( a, b ) -> a ++ " " ++ b |> Just)
-                            (String.fromInt >> Just)
-                            graph
-                        )
-                    ]
-                ]
+        [ Html.text
+            (case result of
+                Ok int ->
+                    String.fromInt int
 
-            Err error ->
-                [ Html.text error ]
-        )
-
-
-shortInput : String
-shortInput =
-    """
-light red bags contain 1 bright white bag, 2 muted yellow bags.
-dark orange bags contain 3 bright white bags, 4 muted yellow bags.
-bright white bags contain 1 shiny gold bag.
-muted yellow bags contain 2 shiny gold bags, 9 faded blue bags.
-shiny gold bags contain 1 dark olive bag, 2 vibrant plum bags.
-dark olive bags contain 3 faded blue bags, 4 dotted black bags.
-vibrant plum bags contain 5 faded blue bags, 6 dotted black bags.
-faded blue bags contain no other bags.
-dotted black bags contain no other bags."""
+                Err error ->
+                    error
+            )
+        ]
