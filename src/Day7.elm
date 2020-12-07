@@ -3,12 +3,9 @@ module Day7 exposing (..)
 import Day7Input exposing (puzzleInput)
 import Dict exposing (Dict)
 import Graph exposing (Graph)
-import Graph.DOT
 import Html exposing (Html)
-import Html.Attributes
 import IntDict
 import LineParser
-import List.Extra as List
 
 
 type alias Bag =
