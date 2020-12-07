@@ -1,25 +1,31 @@
-module LineParser exposing (parse)
+module LineParser exposing (parse, parseGeneral)
 
 
 parse : (String -> Result String a) -> String -> Result String (List a)
 parse parser input =
+    input
+        |> String.trim
+        |> String.lines
+        |> parseGeneral "Line" parser
+
+
+parseGeneral : String -> (String -> Result String a) -> List String -> Result String (List a)
+parseGeneral name parser input =
     let
         results =
             input
-                |> String.trim
-                |> String.lines
-                |> List.indexedMap (\index line -> ( index, line, parser line ))
+                |> List.indexedMap (\index part -> ( index, part, parser part ))
 
         errors =
             results
                 |> List.filterMap
-                    (\( index, line, result ) ->
+                    (\( index, part, result ) ->
                         case result of
                             Ok _ ->
                                 Nothing
 
                             Err error ->
-                                Just ( index, line, error )
+                                Just ( index, part, error )
                     )
 
         oks =
@@ -40,8 +46,8 @@ parse parser input =
     else
         errors
             |> List.map
-                (\( index, line, error ) ->
-                    "Line " ++ String.fromInt (index + 1) ++ ": " ++ error ++ "\n    " ++ line
+                (\( index, part, error ) ->
+                    name ++ " " ++ String.fromInt (index + 1) ++ ": " ++ error ++ "\n    " ++ part
                 )
             |> String.join "\n\n"
             |> Err
