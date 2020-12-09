@@ -62,10 +62,69 @@ findFirstInvalidHelper preamble numbers =
                 findFirstInvalidHelper nextPreamble rest
 
 
+solution2 : String -> Result String Int
+solution2 =
+    parse
+        >> Result.andThen
+            (\numbers ->
+                findFirstInvalid 25 numbers
+                    |> Result.fromMaybe "No invalid number found."
+                    |> Result.andThen
+                        (findContiguous numbers
+                            >> Result.fromMaybe "No contiguous sequence found."
+                        )
+                    |> Result.andThen
+                        (findWeakness
+                            >> Result.fromMaybe "No weakness found."
+                        )
+            )
+
+
+findWeakness : List number -> Maybe number
+findWeakness range =
+    Maybe.map2 (+)
+        (List.minimum range)
+        (List.maximum range)
+
+
+findContiguous : List Int -> Int -> Maybe (List Int)
+findContiguous numbers target =
+    case numbers of
+        first :: second :: rest ->
+            case findContiguousHelper target [ first, second ] rest of
+                Just range ->
+                    Just range
+
+                Nothing ->
+                    findContiguous (second :: rest) target
+
+        _ ->
+            Nothing
+
+
+findContiguousHelper : Int -> List Int -> List Int -> Maybe (List Int)
+findContiguousHelper target range numbers =
+    case compare (List.sum range) target of
+        LT ->
+            case numbers of
+                [] ->
+                    Nothing
+
+                first :: rest ->
+                    findContiguousHelper target (first :: range) rest
+
+        EQ ->
+            Just range
+
+        GT ->
+            Nothing
+
+
 main : Html Never
 main =
     Html.div []
         [ showResult (solution1 puzzleInput)
+        , showResult (solution2 puzzleInput)
         ]
 
 
