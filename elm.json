@@ -14,7 +14,8 @@
             "elm-community/intdict": "3.0.0",
             "elm-community/list-extra": "8.2.4",
             "elm-community/maybe-extra": "5.2.0",
-            "icidasset/elm-binary": "2.1.0"
+            "icidasset/elm-binary": "2.1.0",
+            "robinheghan/elm-deque": "1.0.0"
         },
         "indirect": {
             "avh4/elm-fifo": "1.0.4",
