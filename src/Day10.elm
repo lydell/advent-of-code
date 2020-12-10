@@ -3,6 +3,7 @@ module Day10 exposing (..)
 import Day10Input exposing (puzzleInput)
 import Html exposing (Html)
 import LineParser
+import List.Extra as List
 import Set
 
 
@@ -19,24 +20,8 @@ solution1 =
 solve1 : List Int -> Result String Int
 solve1 adapters =
     let
-        chargingOutlet =
-            0
-
-        deviceAdapter =
-            case List.maximum adapters of
-                Just jolt ->
-                    [ jolt + 3 ]
-
-                Nothing ->
-                    []
-
-        sorted =
-            List.sort adapters
-
         diffs =
-            List.map2 (-)
-                (sorted ++ deviceAdapter)
-                (chargingOutlet :: sorted)
+            getDiffs adapters
 
         ones =
             diffs |> List.filter ((==) 1) |> List.length
@@ -57,10 +42,72 @@ solve1 adapters =
             )
 
 
+getDiffs : List number -> List number
+getDiffs adapters =
+    let
+        chargingOutlet =
+            0
+
+        deviceAdapter =
+            case List.maximum adapters of
+                Just jolt ->
+                    [ jolt + 3 ]
+
+                Nothing ->
+                    []
+
+        sorted =
+            List.sort adapters
+    in
+    List.map2 (-)
+        (sorted ++ deviceAdapter)
+        (chargingOutlet :: sorted)
+
+
+solution2 : String -> Result String Int
+solution2 =
+    parse >> Result.map solve2
+
+
+solve2 : List Int -> Int
+solve2 adapters =
+    let
+        diffs =
+            getDiffs adapters
+
+        groups =
+            List.group diffs
+    in
+    groups
+        |> List.filter (Tuple.first >> (==) 1)
+        |> List.map
+            (\( _, items ) ->
+                -- This many 1s in a row gives that many variations (calculated by hand).
+                case List.length items + 1 of
+                    1 ->
+                        1
+
+                    2 ->
+                        2
+
+                    3 ->
+                        4
+
+                    4 ->
+                        7
+
+                    -- My input never gets more than 4 1s in a row.
+                    _ ->
+                        0
+            )
+        |> List.product
+
+
 main : Html Never
 main =
     Html.div []
         [ showResult (solution1 puzzleInput)
+        , showResult (solution2 puzzleInput)
         ]
 
 
