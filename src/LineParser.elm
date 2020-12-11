@@ -6,11 +6,11 @@ parse parser input =
     input
         |> String.trim
         |> String.lines
-        |> parseGeneral "Line" parser
+        |> parseGeneral "Line" identity parser
 
 
-parseGeneral : String -> (String -> Result String a) -> List String -> Result String (List a)
-parseGeneral name parser input =
+parseGeneral : String -> (a -> String) -> (a -> Result String b) -> List a -> Result String (List b)
+parseGeneral name toString parser input =
     let
         results =
             input
@@ -47,7 +47,7 @@ parseGeneral name parser input =
         errors
             |> List.map
                 (\( index, part, error ) ->
-                    name ++ " " ++ String.fromInt (index + 1) ++ ": " ++ error ++ "\n    " ++ part
+                    name ++ " " ++ String.fromInt (index + 1) ++ ": " ++ error ++ "\n    " ++ toString part
                 )
             |> String.join "\n\n"
             |> Err

@@ -41,6 +41,7 @@ parseLines =
                                     |> removeEnding "."
                                     |> String.split ","
                                     |> LineParser.parseGeneral "Segment"
+                                        identity
                                         (\part ->
                                             case String.words part of
                                                 [] ->
