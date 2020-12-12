@@ -64,6 +64,19 @@ turnsToString turns =
             "270"
 
 
+leftToRight : Turns -> Turns
+leftToRight turns =
+    case turns of
+        One ->
+            Three
+
+        Two ->
+            Two
+
+        Three ->
+            One
+
+
 parse : String -> Result String (List Action)
 parse =
     LineParser.parse
@@ -146,11 +159,6 @@ emptyState =
     }
 
 
-manhattanDistance : State -> Int
-manhattanDistance state =
-    abs state.east + abs state.north
-
-
 step : Action -> State -> State
 step action state =
     case action of
@@ -167,7 +175,7 @@ step action state =
             { state | east = state.east - int }
 
         TurnLeft turns ->
-            { state | direction = turnLeft turns state.direction }
+            { state | direction = turnRight (leftToRight turns) state.direction }
 
         TurnRight turns ->
             { state | direction = turnRight turns state.direction }
@@ -185,21 +193,6 @@ step action state =
 
                 West ->
                     { state | east = state.east - int }
-
-
-turnLeft : Turns -> Direction -> Direction
-turnLeft turns =
-    turnRight
-        (case turns of
-            One ->
-                Three
-
-            Two ->
-                Two
-
-            Three ->
-                One
-        )
 
 
 turnRight : Turns -> Direction -> Direction
@@ -229,6 +222,77 @@ turnRight turns direction =
                 |> turnRight One
                 |> turnRight One
                 |> turnRight One
+
+
+type alias State2 =
+    { east : Int
+    , north : Int
+    , waypointEast : Int
+    , waypointNorth : Int
+    }
+
+
+emptyState2 : State2
+emptyState2 =
+    { east = 0
+    , north = 0
+    , waypointEast = 10
+    , waypointNorth = 1
+    }
+
+
+step2 : Action -> State2 -> State2
+step2 action state =
+    case action of
+        GoNorth int ->
+            { state | waypointNorth = state.waypointNorth + int }
+
+        GoSouth int ->
+            { state | waypointNorth = state.waypointNorth - int }
+
+        GoEast int ->
+            { state | waypointEast = state.waypointEast + int }
+
+        GoWest int ->
+            { state | waypointEast = state.waypointEast - int }
+
+        TurnLeft turns ->
+            turnRight2 (leftToRight turns) state
+
+        TurnRight turns ->
+            turnRight2 turns state
+
+        GoForward int ->
+            { state
+                | north = state.north + state.waypointNorth * int
+                , east = state.east + state.waypointEast * int
+            }
+
+
+turnRight2 : Turns -> State2 -> State2
+turnRight2 turns state =
+    case turns of
+        One ->
+            { state
+                | waypointEast = state.waypointNorth
+                , waypointNorth = -state.waypointEast
+            }
+
+        Two ->
+            state
+                |> turnRight2 One
+                |> turnRight2 One
+
+        Three ->
+            state
+                |> turnRight2 One
+                |> turnRight2 One
+                |> turnRight2 One
+
+
+manhattanDistance : { a | east : Int, north : Int } -> Int
+manhattanDistance state =
+    abs state.east + abs state.north
 
 
 main : Html Never
@@ -271,10 +335,18 @@ viewActions actions =
                 allStates
                 (emptyState :: allStates)
                 actions
+
+        finalState2 =
+            List.foldl step2 emptyState2 actions
     in
     Html.div []
         [ Html.div []
-            [ Html.text (String.fromInt (manhattanDistance finalState)) ]
+            [ Html.text
+                (String.fromInt (manhattanDistance finalState)
+                    ++ " / "
+                    ++ String.fromInt (manhattanDistance finalState2)
+                )
+            ]
         , Html.div []
             [ viewSvg segments ]
         ]
