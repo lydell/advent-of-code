@@ -70,17 +70,11 @@ solution2 =
 
 
 solve2 : List Int -> Int
-solve2 adapters =
-    let
-        diffs =
-            getDiffs adapters
-
-        groups =
-            List.group diffs
-    in
-    groups
-        |> List.filter (Tuple.first >> (==) 1)
-        |> List.map
+solve2 =
+    getDiffs
+        >> List.group
+        >> List.filter (Tuple.first >> (==) 1)
+        >> List.map
             (\( _, items ) ->
                 -- This many 1s in a row gives that many variations (calculated by hand).
                 case List.length items + 1 of
@@ -100,7 +94,7 @@ solve2 adapters =
                     _ ->
                         0
             )
-        |> List.product
+        >> List.product
 
 
 main : Html Never
