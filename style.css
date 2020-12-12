@@ -29,3 +29,8 @@ output {
   display: block;
   white-space: pre-wrap;
 }
+
+svg {
+  display: block;
+  overflow: visible;
+}
