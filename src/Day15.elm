@@ -1,3 +1,6 @@
+-- Warning: Part 2 took almost 3 minutes to complete on my machine!
+
+
 module Day15 exposing (..)
 
 import Day15Input exposing (puzzleInput)
@@ -6,8 +9,8 @@ import Html exposing (Html)
 import List.Extra as List
 
 
-solution1 : List Int -> Result String Int
-solution1 input =
+solution : Int -> List Int -> Result String Int
+solution target input =
     case List.last input of
         Nothing ->
             Err "Empty input."
@@ -16,12 +19,20 @@ solution1 input =
             input
                 |> List.indexedMap (\index int -> ( int, ( index + 1, Nothing ) ))
                 |> Dict.fromList
-                |> solve1 (List.length input + 1) 2020 last
+                |> solve (List.length input + 1) target last
                 |> Ok
 
 
-solve1 : Int -> Int -> Int -> Dict Int ( Int, Maybe Int ) -> Int
-solve1 currentTurn target last dict =
+solve : Int -> Int -> Int -> Dict Int ( Int, Maybe Int ) -> Int
+solve currentTurn target last dict =
+    let
+        _ =
+            if currentTurn |> modBy 1000000 |> (==) 0 then
+                Debug.log "currentTurn" currentTurn
+
+            else
+                0
+    in
     if currentTurn > target then
         last
 
@@ -32,14 +43,14 @@ solve1 currentTurn target last dict =
                     next =
                         turn2 - turn
                 in
-                solve1 (currentTurn + 1) target next (updateDict currentTurn next dict)
+                solve (currentTurn + 1) target next (updateDict currentTurn next dict)
 
             _ ->
                 let
                     next =
                         0
                 in
-                solve1 (currentTurn + 1) target next (updateDict currentTurn next dict)
+                solve (currentTurn + 1) target next (updateDict currentTurn next dict)
 
 
 updateDict : Int -> Int -> Dict Int ( Int, Maybe Int ) -> Dict Int ( Int, Maybe Int )
@@ -61,7 +72,8 @@ updateDict currentTurn next =
 main : Html Never
 main =
     Html.div []
-        [ showResult (solution1 puzzleInput)
+        [ showResult (solution 2020 puzzleInput)
+        , showResult (solution 30000000 puzzleInput)
         ]
 
 
