@@ -1,13 +1,13 @@
-module Day17 exposing (..)
+module Day17Part2 exposing (..)
 
-import Day17Input exposing (puzzleInput)
+import Day17Part2Input exposing (puzzleInput)
 import Html exposing (Html)
 import LineParser
 import Set exposing (Set)
 
 
 type alias ActiveCoords =
-    Set ( Int, Int, Int )
+    Set ( Int, Int, ( Int, Int ) )
 
 
 type State
@@ -40,7 +40,7 @@ parse =
                         (\x active ->
                             case active of
                                 Active ->
-                                    Just ( x, y, 0 )
+                                    Just ( x, y, ( 0, 0 ) )
 
                                 Inactive ->
                                     Nothing
@@ -102,7 +102,7 @@ cycle cyclesLeft activeCoords =
 
 
 type alias Bounds =
-    ( ( Int, Int ), ( Int, Int ), ( Int, Int ) )
+    ( ( Int, Int ), ( Int, Int ), ( ( Int, Int ), ( Int, Int ) ) )
 
 
 getBounds : ActiveCoords -> Bounds
@@ -118,7 +118,10 @@ getBounds activeCoords =
             list |> List.map (\( _, y, _ ) -> y)
 
         zs =
-            list |> List.map (\( _, _, z ) -> z)
+            list |> List.map (\( _, _, ( z, _ ) ) -> z)
+
+        ws =
+            list |> List.map (\( _, _, ( _, w ) ) -> w)
     in
     ( ( xs |> List.minimum |> Maybe.withDefault 0
       , xs |> List.maximum |> Maybe.withDefault 0
@@ -126,22 +129,28 @@ getBounds activeCoords =
     , ( ys |> List.minimum |> Maybe.withDefault 0
       , ys |> List.maximum |> Maybe.withDefault 0
       )
-    , ( zs |> List.minimum |> Maybe.withDefault 0
-      , zs |> List.maximum |> Maybe.withDefault 0
+    , ( ( zs |> List.minimum |> Maybe.withDefault 0
+        , zs |> List.maximum |> Maybe.withDefault 0
+        )
+      , ( ws |> List.minimum |> Maybe.withDefault 0
+        , ws |> List.maximum |> Maybe.withDefault 0
+        )
       )
     )
 
 
 expandBounds : Int -> Bounds -> Bounds
-expandBounds size ( ( minX, maxX ), ( minY, maxY ), ( minZ, maxZ ) ) =
+expandBounds size ( ( minX, maxX ), ( minY, maxY ), ( ( minZ, maxZ ), ( minW, maxW ) ) ) =
     ( ( minX - size, maxX + size )
     , ( minY - size, maxY + size )
-    , ( minZ - size, maxZ + size )
+    , ( ( minZ - size, maxZ + size )
+      , ( minW - size, maxW + size )
+      )
     )
 
 
-boundsToCoords : Bounds -> List ( Int, Int, Int )
-boundsToCoords ( ( minX, maxX ), ( minY, maxY ), ( minZ, maxZ ) ) =
+boundsToCoords : Bounds -> List ( Int, Int, ( Int, Int ) )
+boundsToCoords ( ( minX, maxX ), ( minY, maxY ), ( ( minZ, maxZ ), ( minW, maxW ) ) ) =
     List.range minX maxX
         |> List.concatMap
             (\x ->
@@ -149,51 +158,29 @@ boundsToCoords ( ( minX, maxX ), ( minY, maxY ), ( minZ, maxZ ) ) =
                     |> List.concatMap
                         (\y ->
                             List.range minZ maxZ
-                                |> List.map
+                                |> List.concatMap
                                     (\z ->
-                                        ( x, y, z )
+                                        List.range minW maxW
+                                            |> List.map
+                                                (\w ->
+                                                    ( x, y, ( z, w ) )
+                                                )
                                     )
                         )
             )
 
 
-neighborOffsets : List ( Int, Int, Int )
+neighborOffsets : List ( Int, Int, ( Int, Int ) )
 neighborOffsets =
-    [ ( 0, 0, -1 )
-    , ( 0, 0, 1 )
-    , ( 0, -1, 0 )
-    , ( 0, -1, -1 )
-    , ( 0, -1, 1 )
-    , ( 0, 1, 0 )
-    , ( 0, 1, -1 )
-    , ( 0, 1, 1 )
-    , ( -1, 0, 0 )
-    , ( -1, 0, -1 )
-    , ( -1, 0, 1 )
-    , ( -1, -1, 0 )
-    , ( -1, -1, -1 )
-    , ( -1, -1, 1 )
-    , ( -1, 1, 0 )
-    , ( -1, 1, -1 )
-    , ( -1, 1, 1 )
-    , ( 1, 0, 0 )
-    , ( 1, 0, -1 )
-    , ( 1, 0, 1 )
-    , ( 1, -1, 0 )
-    , ( 1, -1, -1 )
-    , ( 1, -1, 1 )
-    , ( 1, 1, 0 )
-    , ( 1, 1, -1 )
-    , ( 1, 1, 1 )
-    ]
+    [ ( -1, -1, ( -1, -1 ) ), ( 0, -1, ( -1, -1 ) ), ( 1, -1, ( -1, -1 ) ), ( -1, 0, ( -1, -1 ) ), ( 0, 0, ( -1, -1 ) ), ( 1, 0, ( -1, -1 ) ), ( -1, 1, ( -1, -1 ) ), ( 0, 1, ( -1, -1 ) ), ( 1, 1, ( -1, -1 ) ), ( -1, -1, ( 0, -1 ) ), ( 0, -1, ( 0, -1 ) ), ( 1, -1, ( 0, -1 ) ), ( -1, 0, ( 0, -1 ) ), ( 0, 0, ( 0, -1 ) ), ( 1, 0, ( 0, -1 ) ), ( -1, 1, ( 0, -1 ) ), ( 0, 1, ( 0, -1 ) ), ( 1, 1, ( 0, -1 ) ), ( -1, -1, ( 1, -1 ) ), ( 0, -1, ( 1, -1 ) ), ( 1, -1, ( 1, -1 ) ), ( -1, 0, ( 1, -1 ) ), ( 0, 0, ( 1, -1 ) ), ( 1, 0, ( 1, -1 ) ), ( -1, 1, ( 1, -1 ) ), ( 0, 1, ( 1, -1 ) ), ( 1, 1, ( 1, -1 ) ), ( -1, -1, ( -1, 0 ) ), ( 0, -1, ( -1, 0 ) ), ( 1, -1, ( -1, 0 ) ), ( -1, 0, ( -1, 0 ) ), ( 0, 0, ( -1, 0 ) ), ( 1, 0, ( -1, 0 ) ), ( -1, 1, ( -1, 0 ) ), ( 0, 1, ( -1, 0 ) ), ( 1, 1, ( -1, 0 ) ), ( -1, -1, ( 0, 0 ) ), ( 0, -1, ( 0, 0 ) ), ( 1, -1, ( 0, 0 ) ), ( -1, 0, ( 0, 0 ) ), ( 1, 0, ( 0, 0 ) ), ( -1, 1, ( 0, 0 ) ), ( 0, 1, ( 0, 0 ) ), ( 1, 1, ( 0, 0 ) ), ( -1, -1, ( 1, 0 ) ), ( 0, -1, ( 1, 0 ) ), ( 1, -1, ( 1, 0 ) ), ( -1, 0, ( 1, 0 ) ), ( 0, 0, ( 1, 0 ) ), ( 1, 0, ( 1, 0 ) ), ( -1, 1, ( 1, 0 ) ), ( 0, 1, ( 1, 0 ) ), ( 1, 1, ( 1, 0 ) ), ( -1, -1, ( -1, 1 ) ), ( 0, -1, ( -1, 1 ) ), ( 1, -1, ( -1, 1 ) ), ( -1, 0, ( -1, 1 ) ), ( 0, 0, ( -1, 1 ) ), ( 1, 0, ( -1, 1 ) ), ( -1, 1, ( -1, 1 ) ), ( 0, 1, ( -1, 1 ) ), ( 1, 1, ( -1, 1 ) ), ( -1, -1, ( 0, 1 ) ), ( 0, -1, ( 0, 1 ) ), ( 1, -1, ( 0, 1 ) ), ( -1, 0, ( 0, 1 ) ), ( 0, 0, ( 0, 1 ) ), ( 1, 0, ( 0, 1 ) ), ( -1, 1, ( 0, 1 ) ), ( 0, 1, ( 0, 1 ) ), ( 1, 1, ( 0, 1 ) ), ( -1, -1, ( 1, 1 ) ), ( 0, -1, ( 1, 1 ) ), ( 1, -1, ( 1, 1 ) ), ( -1, 0, ( 1, 1 ) ), ( 0, 0, ( 1, 1 ) ), ( 1, 0, ( 1, 1 ) ), ( -1, 1, ( 1, 1 ) ), ( 0, 1, ( 1, 1 ) ), ( 1, 1, ( 1, 1 ) ) ]
 
 
-getNeighbors : ( Int, Int, Int ) -> ActiveCoords -> List State
-getNeighbors ( x, y, z ) activeCoords =
+getNeighbors : ( Int, Int, ( Int, Int ) ) -> ActiveCoords -> List State
+getNeighbors ( x, y, ( z, w ) ) activeCoords =
     neighborOffsets
         |> List.map
-            (\( dx, dy, dz ) ->
-                if Set.member ( x + dx, y + dy, z + dz ) activeCoords then
+            (\( dx, dy, ( dz, dw ) ) ->
+                if Set.member ( x + dx, y + dy, ( z + dz, w + dw ) ) activeCoords then
                     Active
 
                 else
