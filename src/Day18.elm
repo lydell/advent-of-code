@@ -22,25 +22,8 @@ type alias Precedence =
 parse : Precedence -> String -> Result String (List Expression)
 parse precedence =
     String.trim
-        >> Parser.run (loopParser (expressionParser precedence))
+        >> Parser.run (Parser.Extra.loopLineWise (expressionParser precedence))
         >> Result.mapError Parser.Extra.deadEndsToString
-
-
-loopParser : Parser a -> Parser (List a)
-loopParser parser =
-    Parser.loop [] (loopParserHelper parser)
-
-
-loopParserHelper : Parser a -> List a -> Parser (Parser.Step (List a) (List a))
-loopParserHelper parser result =
-    Parser.oneOf
-        [ Parser.succeed (\a -> Parser.Loop (a :: result))
-            |. Parser.spaces
-            |= parser
-            |. Parser.spaces
-        , Parser.succeed ()
-            |> Parser.map (\() -> Parser.Done (List.reverse result))
-        ]
 
 
 expressionParser : Precedence -> Parser Expression
@@ -54,7 +37,7 @@ expressionParser precedence =
             [ Pratt.infixLeft precedence.addition (Parser.symbol "+") Addition
             , Pratt.infixLeft precedence.multiplication (Parser.symbol "*") Multiplication
             ]
-        , spaces = Parser.spaces
+        , spaces = Parser.Extra.spaces
         }
 
 

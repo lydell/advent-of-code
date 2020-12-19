@@ -1,11 +1,10 @@
--- Copied from https://github.com/elm/parser/pull/16
+module Parser.Extra exposing (deadEndsToString, loopLineWise, spaces)
+
+import Parser exposing ((|.), (|=), Parser)
 
 
-module Parser.Extra exposing (deadEndsToString)
-
-import Parser
-
-
+{-| Copied from <https://github.com/elm/parser/pull/16>
+-}
 deadEndsToString : List Parser.DeadEnd -> String
 deadEndsToString deadEnds =
     String.concat (List.intersperse "; " (List.map deadEndToString deadEnds))
@@ -60,3 +59,22 @@ problemToString p =
 
         Parser.BadRepeat ->
             "bad repeat"
+
+
+loopLineWise : Parser a -> Parser (List a)
+loopLineWise parser =
+    Parser.succeed identity
+        |= Parser.sequence
+            { start = ""
+            , separator = "\n"
+            , end = ""
+            , spaces = Parser.succeed ()
+            , item = parser
+            , trailing = Parser.Optional
+            }
+        |. Parser.end
+
+
+spaces : Parser ()
+spaces =
+    Parser.chompWhile ((==) ' ')
