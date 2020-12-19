@@ -121,15 +121,12 @@ parseLines =
 
 solution1 : String -> Result String Int
 solution1 =
-    parse
-        >> Debug.log "parsed"
-        >> Result.map solve
+    parse >> Result.map solve
 
 
 solution2 : String -> Result String Int
 solution2 =
-    parse
-        >> Result.map (Tuple.mapFirst patchRulesDict >> solve)
+    parse >> Result.map (Tuple.mapFirst patchRulesDict >> solve)
 
 
 patchRulesDict : Dict Int (NonEmpty Rule) -> Dict Int (NonEmpty Rule)
@@ -142,163 +139,158 @@ solve : ( Dict Int (NonEmpty Rule), List (List Char) ) -> Int
 solve ( rulesDict, lines ) =
     lines
         |> List.map (match 0 rulesDict >> evaluateNextResult)
-        |> Debug.log "matches"
         |> List.filter
             (\result ->
                 case result of
-                    Ok [] ->
+                    Just [] ->
                         True
 
-                    Ok _ ->
+                    Just _ ->
                         False
 
-                    Err _ ->
+                    Nothing ->
                         False
             )
         |> List.length
 
 
 type Next
-    = Next (List Char) (() -> Result String Next)
-    | NoNext (List Char)
+    = NoNext (List Char)
+    | Next (List Char) (() -> Maybe Next)
 
 
-evaluateNextResult : Result String Next -> Result String (List Char)
-evaluateNextResult next =
-    case next of
-        Ok (NoNext remainingChars) ->
-            Ok remainingChars
+evaluateNextResult : Maybe Next -> Maybe (List Char)
+evaluateNextResult =
+    Maybe.andThen
+        (\next ->
+            case next of
+                NoNext remainingChars ->
+                    Just remainingChars
 
-        Ok (Next [] _) ->
-            Ok []
+                Next [] _ ->
+                    Just []
 
-        Ok (Next _ f) ->
-            f () |> evaluateNextResult
-
-        Err message ->
-            Err message
+                Next _ f ->
+                    f () |> evaluateNextResult
+        )
 
 
-match : Int -> Dict Int (NonEmpty Rule) -> List Char -> Result String Next
+match : Int -> Dict Int (NonEmpty Rule) -> List Char -> Maybe Next
 match ruleId rulesDict chars =
-    case Dict.get ruleId rulesDict of
-        Just rules ->
-            matchHelper rules rulesDict chars
-
-        Nothing ->
-            Err ("Rule not found: " ++ String.fromInt ruleId)
+    Dict.get ruleId rulesDict
+        |> Maybe.andThen (\rules -> matchRules rules rulesDict chars)
 
 
-matchHelper : NonEmpty Rule -> Dict Int (NonEmpty Rule) -> List Char -> Result String Next
-matchHelper ( rule, restRules ) ruleDict chars =
-    case matchHelperHelper rule ruleDict chars of
-        Ok (NoNext []) ->
-            Ok (NoNext [])
+matchRules : NonEmpty Rule -> Dict Int (NonEmpty Rule) -> List Char -> Maybe Next
+matchRules ( rule, restRules ) ruleDict chars =
+    case matchRule rule ruleDict chars of
+        Just (NoNext []) ->
+            Just (NoNext [])
 
-        Ok (NoNext remainingChars) ->
+        Just (NoNext remainingChars) ->
             case restRules of
                 [] ->
-                    Ok (NoNext remainingChars)
+                    Just (NoNext remainingChars)
 
                 first :: rest ->
-                    Ok
+                    Just
                         (Next remainingChars
-                            (\() -> matchHelper ( first, rest ) ruleDict chars)
+                            (\() -> matchRules ( first, rest ) ruleDict chars)
                         )
 
-        Ok (Next [] _) ->
-            Ok (NoNext [])
+        Just (Next [] _) ->
+            Just (NoNext [])
 
-        Ok (Next remainingChars f) ->
+        Just (Next remainingChars f) ->
             case restRules of
                 [] ->
-                    Ok (Next remainingChars f)
+                    Just (Next remainingChars f)
 
                 first :: rest ->
-                    Ok
+                    Just
                         (Next remainingChars
-                            (\() -> matchHelper ( first, rest ) ruleDict chars)
+                            (\() -> matchRules ( first, rest ) ruleDict chars)
                             |> chainNext f
                         )
 
-        Err message ->
+        Nothing ->
             case restRules of
                 [] ->
-                    Err ("No rule matched. Most recent error: " ++ message)
+                    Nothing
 
                 first :: rest ->
-                    matchHelper ( first, rest ) ruleDict chars
+                    matchRules ( first, rest ) ruleDict chars
 
 
-matchHelperHelper : Rule -> Dict Int (NonEmpty Rule) -> List Char -> Result String Next
-matchHelperHelper rule rulesDict chars =
+matchRule : Rule -> Dict Int (NonEmpty Rule) -> List Char -> Maybe Next
+matchRule rule rulesDict chars =
     case rule of
         MatchChar wantedChar ->
             case chars of
                 [] ->
-                    Err "No more chars to consume for the current rule."
+                    Nothing
 
                 char :: rest ->
                     if char == wantedChar then
-                        Ok (NoNext rest)
+                        Just (NoNext rest)
 
                     else
-                        Err ("Expected " ++ String.fromChar wantedChar ++ " but got " ++ String.fromChar char)
+                        Nothing
 
         Sequence ruleIds ->
-            sequenceHelper ruleIds rulesDict chars
+            matchSequence ruleIds rulesDict chars
 
 
-sequenceHelper : NonEmpty Int -> Dict Int (NonEmpty Rule) -> List Char -> Result String Next
-sequenceHelper ( ruleId, restRuleIds ) rulesDict chars =
+matchSequence : NonEmpty Int -> Dict Int (NonEmpty Rule) -> List Char -> Maybe Next
+matchSequence ( ruleId, restRuleIds ) rulesDict chars =
     match ruleId rulesDict chars
-        |> sequenceHelperHelper restRuleIds rulesDict
+        |> matchSequenceHelper restRuleIds rulesDict
 
 
-sequenceHelperHelper : List Int -> Dict Int (NonEmpty Rule) -> Result String Next -> Result String Next
-sequenceHelperHelper restRuleIds rulesDict next =
-    case next of
-        Ok (NoNext remainingChars) ->
-            case restRuleIds of
-                [] ->
-                    Ok (NoNext remainingChars)
+matchSequenceHelper : List Int -> Dict Int (NonEmpty Rule) -> Maybe Next -> Maybe Next
+matchSequenceHelper restRuleIds rulesDict =
+    Maybe.andThen
+        (\next ->
+            case next of
+                NoNext remainingChars ->
+                    case restRuleIds of
+                        [] ->
+                            Just (NoNext remainingChars)
 
-                first :: rest ->
-                    sequenceHelper ( first, rest ) rulesDict remainingChars
+                        first :: rest ->
+                            matchSequence ( first, rest ) rulesDict remainingChars
 
-        Ok (Next remainingChars f) ->
-            case restRuleIds of
-                [] ->
-                    Ok (Next remainingChars f)
+                Next remainingChars f ->
+                    case restRuleIds of
+                        [] ->
+                            Just (Next remainingChars f)
 
-                first :: rest ->
-                    case sequenceHelper ( first, rest ) rulesDict remainingChars of
-                        Ok next2 ->
-                            next2 |> chainNext f |> Ok
+                        first :: rest ->
+                            case matchSequence ( first, rest ) rulesDict remainingChars of
+                                Just next2 ->
+                                    next2 |> chainNext f |> Just
 
-                        Err _ ->
-                            f () |> sequenceHelperHelper restRuleIds rulesDict
-
-        Err message ->
-            Err ("Sequence did not match: " ++ message)
+                                Nothing ->
+                                    f () |> matchSequenceHelper restRuleIds rulesDict
+        )
 
 
-chainNext : (() -> Result String Next) -> Next -> Next
+chainNext : (() -> Maybe Next) -> Next -> Next
 chainNext f next =
     case next of
+        NoNext remainingChars ->
+            Next remainingChars f
+
         Next remainingChars f2 ->
             Next remainingChars
                 (\() ->
                     case f2 () of
-                        Ok next2 ->
-                            next2 |> chainNext f |> Ok
+                        Just next2 ->
+                            next2 |> chainNext f |> Just
 
-                        Err _ ->
+                        Nothing ->
                             f ()
                 )
-
-        NoNext remainingChars ->
-            Next remainingChars f
 
 
 main : Html Never
