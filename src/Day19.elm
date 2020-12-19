@@ -123,28 +123,63 @@ solution1 : String -> Result String Int
 solution1 =
     parse
         >> Debug.log "parsed"
-        >> Result.map
-            (\( rulesDict, lines ) ->
-                lines
-                    |> List.map (match 0 rulesDict)
-                    |> Debug.log "matches"
-                    |> List.filter
-                        (\result ->
-                            case result of
-                                Ok [] ->
-                                    True
+        >> Result.map solve
 
-                                Ok _ ->
-                                    False
 
-                                Err _ ->
-                                    False
-                        )
-                    |> List.length
+solution2 : String -> Result String Int
+solution2 =
+    parse
+        >> Result.map (Tuple.mapFirst patchRulesDict >> solve)
+
+
+patchRulesDict : Dict Int (NonEmpty Rule) -> Dict Int (NonEmpty Rule)
+patchRulesDict =
+    Dict.insert 8 ( Sequence ( 42, [] ), [ Sequence ( 42, [ 8 ] ) ] )
+        >> Dict.insert 11 ( Sequence ( 42, [ 31 ] ), [ Sequence ( 42, [ 11, 31 ] ) ] )
+
+
+solve : ( Dict Int (NonEmpty Rule), List (List Char) ) -> Int
+solve ( rulesDict, lines ) =
+    lines
+        |> List.map (match 0 rulesDict >> evaluateNextResult)
+        |> Debug.log "matches"
+        |> List.filter
+            (\result ->
+                case result of
+                    Ok [] ->
+                        True
+
+                    Ok _ ->
+                        False
+
+                    Err _ ->
+                        False
             )
+        |> List.length
 
 
-match : Int -> Dict Int (NonEmpty Rule) -> List Char -> Result String (List Char)
+type Next
+    = Next (List Char) (() -> Result String Next)
+    | NoNext (List Char)
+
+
+evaluateNextResult : Result String Next -> Result String (List Char)
+evaluateNextResult next =
+    case next of
+        Ok (NoNext remainingChars) ->
+            Ok remainingChars
+
+        Ok (Next [] _) ->
+            Ok []
+
+        Ok (Next _ f) ->
+            f () |> evaluateNextResult
+
+        Err message ->
+            Err message
+
+
+match : Int -> Dict Int (NonEmpty Rule) -> List Char -> Result String Next
 match ruleId rulesDict chars =
     case Dict.get ruleId rulesDict of
         Just rules ->
@@ -154,11 +189,37 @@ match ruleId rulesDict chars =
             Err ("Rule not found: " ++ String.fromInt ruleId)
 
 
-matchHelper : NonEmpty Rule -> Dict Int (NonEmpty Rule) -> List Char -> Result String (List Char)
+matchHelper : NonEmpty Rule -> Dict Int (NonEmpty Rule) -> List Char -> Result String Next
 matchHelper ( rule, restRules ) ruleDict chars =
     case matchHelperHelper rule ruleDict chars of
-        Ok remainingChars ->
-            Ok remainingChars
+        Ok (NoNext []) ->
+            Ok (NoNext [])
+
+        Ok (NoNext remainingChars) ->
+            case restRules of
+                [] ->
+                    Ok (NoNext remainingChars)
+
+                first :: rest ->
+                    Ok
+                        (Next remainingChars
+                            (\() -> matchHelper ( first, rest ) ruleDict chars)
+                        )
+
+        Ok (Next [] _) ->
+            Ok (NoNext [])
+
+        Ok (Next remainingChars f) ->
+            case restRules of
+                [] ->
+                    Ok (Next remainingChars f)
+
+                first :: rest ->
+                    Ok
+                        (Next remainingChars
+                            (\() -> matchHelper ( first, rest ) ruleDict chars)
+                            |> chainNext f
+                        )
 
         Err message ->
             case restRules of
@@ -169,7 +230,7 @@ matchHelper ( rule, restRules ) ruleDict chars =
                     matchHelper ( first, rest ) ruleDict chars
 
 
-matchHelperHelper : Rule -> Dict Int (NonEmpty Rule) -> List Char -> Result String (List Char)
+matchHelperHelper : Rule -> Dict Int (NonEmpty Rule) -> List Char -> Result String Next
 matchHelperHelper rule rulesDict chars =
     case rule of
         MatchChar wantedChar ->
@@ -179,7 +240,7 @@ matchHelperHelper rule rulesDict chars =
 
                 char :: rest ->
                     if char == wantedChar then
-                        Ok rest
+                        Ok (NoNext rest)
 
                     else
                         Err ("Expected " ++ String.fromChar wantedChar ++ " but got " ++ String.fromChar char)
@@ -188,25 +249,63 @@ matchHelperHelper rule rulesDict chars =
             sequenceHelper ruleIds rulesDict chars
 
 
-sequenceHelper : NonEmpty Int -> Dict Int (NonEmpty Rule) -> List Char -> Result String (List Char)
+sequenceHelper : NonEmpty Int -> Dict Int (NonEmpty Rule) -> List Char -> Result String Next
 sequenceHelper ( ruleId, restRuleIds ) rulesDict chars =
-    case match ruleId rulesDict chars of
-        Ok remainingString ->
+    match ruleId rulesDict chars
+        |> sequenceHelperHelper restRuleIds rulesDict
+
+
+sequenceHelperHelper : List Int -> Dict Int (NonEmpty Rule) -> Result String Next -> Result String Next
+sequenceHelperHelper restRuleIds rulesDict next =
+    case next of
+        Ok (NoNext remainingChars) ->
             case restRuleIds of
                 [] ->
-                    Ok remainingString
+                    Ok (NoNext remainingChars)
 
                 first :: rest ->
-                    sequenceHelper ( first, rest ) rulesDict remainingString
+                    sequenceHelper ( first, rest ) rulesDict remainingChars
+
+        Ok (Next remainingChars f) ->
+            case restRuleIds of
+                [] ->
+                    Ok (Next remainingChars f)
+
+                first :: rest ->
+                    case sequenceHelper ( first, rest ) rulesDict remainingChars of
+                        Ok next2 ->
+                            next2 |> chainNext f |> Ok
+
+                        Err _ ->
+                            f () |> sequenceHelperHelper restRuleIds rulesDict
 
         Err message ->
             Err ("Sequence did not match: " ++ message)
+
+
+chainNext : (() -> Result String Next) -> Next -> Next
+chainNext f next =
+    case next of
+        Next remainingChars f2 ->
+            Next remainingChars
+                (\() ->
+                    case f2 () of
+                        Ok next2 ->
+                            next2 |> chainNext f |> Ok
+
+                        Err _ ->
+                            f ()
+                )
+
+        NoNext remainingChars ->
+            Next remainingChars f
 
 
 main : Html Never
 main =
     Html.div []
         [ showResult (solution1 puzzleInput)
+        , showResult (solution2 puzzleInput)
         ]
 
 
