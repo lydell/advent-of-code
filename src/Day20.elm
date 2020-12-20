@@ -498,45 +498,159 @@ arrayToRow default array =
         (\x _ -> Array.get x array |> Maybe.withDefault default)
 
 
+type Spot
+    = Calm
+    | Rough
+    | SeaMonster
 
--- matches : Array Color -> Tile -> Int
--- matches wantedEdge tile =
---     let
---         edges =
---             [ Matrix.getRow 0 tile.matrix
---             , Matrix.getRow (size - 1) tile.matrix
---             , Matrix.getColumn 0 tile.matrix
---             , Matrix.getColumn (size - 1) tile.matrix
---             ]
---                 |> List.filterMap Result.toMaybe
---                 |> List.concatMap
---                     (\edge ->
---                         [ edge
---                         , edge |> Array.toList |> List.reverse |> Array.fromList
---                         ]
---                     )
---     in
---     edges
---         |> List.filter ((==) wantedEdge)
---         |> List.length
+
+seaMonsterPattern : List ( Int, Int )
+seaMonsterPattern =
+    """
+                  # 
+#    ##    ##    ###
+ #  #  #  #  #  #   """
+        |> String.lines
+        |> List.drop 1
+        |> List.indexedMap
+            (\y ->
+                String.toList
+                    >> List.indexedMap
+                        (\x char ->
+                            if char == '#' then
+                                Just ( x, y )
+
+                            else
+                                Nothing
+                        )
+                    >> List.filterMap identity
+            )
+        |> List.concat
+
+
+toSeaMonsterImage : Matrix Color -> Matrix Spot
+toSeaMonsterImage matrix =
+    matrix
+        |> Matrix.indexedMap (\x y color -> ( x, y, color ))
+        |> Matrix.foldl
+            (\( x, y, color ) seaMonsterImage ->
+                let
+                    coords =
+                        seaMonsterPattern
+                            |> List.map (\( dx, dy ) -> ( x + dx, y + dy ))
+
+                    isSeaMonster =
+                        coords
+                            |> List.all
+                                (\( cx, cy ) ->
+                                    case Matrix.get cx cy matrix of
+                                        Ok White ->
+                                            False
+
+                                        Ok Black ->
+                                            True
+
+                                        Err _ ->
+                                            False
+                                )
+                in
+                if isSeaMonster then
+                    coords
+                        |> List.foldl
+                            (\( cx, cy ) ->
+                                Matrix.set cx cy SeaMonster
+                            )
+                            seaMonsterImage
+
+                else
+                    seaMonsterImage
+            )
+            (Matrix.map colorToSpot matrix)
+
+
+colorToSpot : Color -> Spot
+colorToSpot color =
+    case color of
+        White ->
+            Calm
+
+        Black ->
+            Rough
 
 
 main : Html Never
 main =
     case puzzleInput |> parse |> Result.andThen puzzle of
         Ok ( cornerIdProduct, image, imageWithBorders ) ->
+            let
+                seaMonsterImages =
+                    List.range 0 3
+                        |> List.concatMap
+                            (\turns ->
+                                [ ( turns, identity )
+                                , ( turns, flipMatrixAroundXAxis White )
+                                , ( turns, flipMatrixAroundYAxis White )
+                                , ( turns, flipMatrixAroundXAxis White >> flipMatrixAroundYAxis White )
+                                ]
+                            )
+                        |> List.filterMap
+                            (\( turns, flip ) ->
+                                let
+                                    seaMonsterImage =
+                                        image
+                                            |> rotateMatrix turns White
+                                            |> flip
+                                            |> toSeaMonsterImage
+
+                                    array =
+                                        Matrix.toArray seaMonsterImage
+
+                                    numRough =
+                                        array
+                                            |> Array.filter ((==) Rough)
+                                            |> Array.length
+
+                                    numSeaMonster =
+                                        array
+                                            |> Array.filter ((==) SeaMonster)
+                                            |> Array.length
+                                in
+                                if numSeaMonster > 0 then
+                                    Just ( numRough, seaMonsterImage )
+
+                                else
+                                    Nothing
+                            )
+
+                _ =
+                    Debug.log "monster" seaMonsterPattern
+            in
             Html.div []
                 [ Html.text (String.fromInt cornerIdProduct)
-                , viewImage image
-                , viewImage imageWithBorders
+                , Html.div []
+                    (if List.isEmpty seaMonsterImages then
+                        [ Html.text "No sea monsters found." ]
+
+                     else
+                        seaMonsterImages
+                            |> List.map
+                                (\( numRough, seaMonsterImage ) ->
+                                    Html.div []
+                                        [ Html.text (String.fromInt numRough)
+                                        , viewImage spotToString seaMonsterImage
+                                        ]
+                                )
+                    )
+                , viewImage colorToString image
+                , viewImage colorToString imageWithBorders
                 ]
 
         Err message ->
             Html.text message
 
 
-viewImage : Matrix Color -> Html msg
-viewImage matrix =
+viewImage : (a -> String) -> Matrix a -> Html msg
+viewImage toString matrix =
     Html.pre [ Html.Attributes.style "font-size" "16px" ]
         [ Html.text
             (matrix
@@ -551,7 +665,7 @@ viewImage matrix =
                                 else
                                     ""
                         in
-                        string ++ newline ++ colorToString color
+                        string ++ newline ++ toString color
                     )
                     ""
             )
@@ -566,6 +680,19 @@ colorToString color =
 
         Black ->
             "#"
+
+
+spotToString : Spot -> String
+spotToString spot =
+    case spot of
+        Calm ->
+            "."
+
+        Rough ->
+            "~"
+
+        SeaMonster ->
+            "O"
 
 
 showResult : Result String a -> Html msg
