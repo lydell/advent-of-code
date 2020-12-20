@@ -31,7 +31,6 @@ type alias Tile =
 
 type alias Edge =
     { turns : Int
-    , flip : Bool
     , colors : Array Color
     }
 
@@ -59,36 +58,16 @@ parse =
                             ( id
                             , { edges =
                                     [ { turns = 0
-                                      , flip = False
                                       , colors = top
                                       }
-                                    , { turns = 0
-                                      , flip = True
-                                      , colors = reverseArray top
-                                      }
                                     , { turns = 1
-                                      , flip = False
                                       , colors = right
                                       }
-                                    , { turns = 1
-                                      , flip = True
-                                      , colors = reverseArray right
-                                      }
                                     , { turns = 2
-                                      , flip = False
                                       , colors = bottom
                                       }
-                                    , { turns = 2
-                                      , flip = True
-                                      , colors = reverseArray bottom
-                                      }
                                     , { turns = 3
-                                      , flip = False
                                       , colors = left
-                                      }
-                                    , { turns = 3
-                                      , flip = True
-                                      , colors = reverseArray left
                                       }
                                     ]
                               , image = trimBorder White matrix
@@ -209,6 +188,7 @@ puzzle tiles =
                 _ =
                     result
                         |> Dict.map (always Tuple.first)
+                        |> Debug.log "puzzle"
 
                 coords =
                     Dict.keys result
@@ -265,7 +245,8 @@ puzzle tiles =
                                         matrix
                             )
                             (Matrix.repeat width height White)
-                        |> flipMatrixAroundXAxis White
+
+                -- |> flipMatrixAroundXAxis White
             in
             if Dict.size tilesLeft /= 0 then
                 Err
@@ -283,6 +264,10 @@ puzzle tiles =
 
 puzzleHelper : ( Int, Int ) -> Int -> Tile -> ( Dict Int Tile, Dict ( Int, Int ) ( Int, Tile ) ) -> ( Dict Int Tile, Dict ( Int, Int ) ( Int, Tile ) )
 puzzleHelper ( x, y ) tileId tile ( initialTilesLeft, initialResult ) =
+    let
+        _ =
+            Debug.log "puzzleHelper" tileId
+    in
     tile.edges
         |> List.filterMap
             (\edge ->
@@ -294,6 +279,7 @@ puzzleHelper ( x, y ) tileId tile ( initialTilesLeft, initialResult ) =
                     _ =
                         list
                             |> List.map (\( edge, ( id, _ ) ) -> ( edge.turns, id ))
+                            |> Debug.log "next tiles"
                 in
                 list
            )
@@ -317,18 +303,20 @@ puzzleHelper ( x, y ) tileId tile ( initialTilesLeft, initialResult ) =
                             _ ->
                                 ( x, y )
                 in
-                case Dict.get nextCoord result of
-                    Just _ ->
-                        ( tilesLeft, result )
+                if Dict.member nextCoord result || not (Dict.member nextTileId tilesLeft) then
+                    ( tilesLeft, result )
 
-                    Nothing ->
-                        let
-                            ( nextTilesLeft, nextResult ) =
-                                ( Dict.remove nextTileId tilesLeft
-                                , Dict.insert nextCoord ( nextTileId, nextTile ) result
-                                )
-                        in
-                        puzzleHelper nextCoord nextTileId nextTile ( nextTilesLeft, nextResult )
+                else
+                    let
+                        ( nextTilesLeft, nextResult ) =
+                            ( Dict.remove nextTileId tilesLeft
+                            , Dict.insert nextCoord ( nextTileId, nextTile ) result
+                            )
+
+                        _ =
+                            Debug.log "fold" ( tileId, nextTileId, ( edge.turns, ( x, y ), nextCoord ) )
+                    in
+                    puzzleHelper nextCoord nextTileId nextTile ( nextTilesLeft, nextResult )
             )
             ( initialTilesLeft
             , initialResult
@@ -345,20 +333,36 @@ findNextTile wantedEdge =
 
                 Nothing ->
                     tile.edges
-                        |> List.find (\edge -> not edge.flip && edge.colors == wantedEdge.colors)
-                        |> Maybe.map (\edge -> ( id, transformTile id wantedEdge edge tile ))
+                        |> List.filterMap
+                            (\edge ->
+                                if edge.colors == wantedEdge.colors then
+                                    Just ( False, edge )
+
+                                else if reverseArray edge.colors == wantedEdge.colors then
+                                    Just ( True, edge )
+
+                                else
+                                    Nothing
+                            )
+                        |> List.head
+                        |> Maybe.map
+                            (\( flip, edge ) ->
+                                ( id
+                                , transformTile id flip wantedEdge edge tile
+                                )
+                            )
         )
         Nothing
 
 
-transformTile : Int -> Edge -> Edge -> Tile -> Tile
-transformTile id otherEdge edge tile =
+transformTile : Int -> Bool -> Edge -> Edge -> Tile -> Tile
+transformTile id flip otherEdge edge tile =
     let
         _ =
             Debug.log "transformTile"
                 ( id
                 , ( edge.turns, otherEdge.turns, otherEdge.turns + 2 - edge.turns )
-                , if not edge.flip then
+                , if not flip then
                     "identity"
 
                   else if edge.turns |> modBy 2 |> (==) 0 then
@@ -368,7 +372,7 @@ transformTile id otherEdge edge tile =
                     "flipTileAroundXAxis"
                 )
     in
-    (if not edge.flip then
+    (if not flip then
         tile
 
      else if edge.turns |> modBy 2 |> (==) 0 then
@@ -390,7 +394,7 @@ flipTileAroundXAxis tile =
                         { edge | turns = edge.turns + 2 |> modBy 4 }
 
                     else
-                        { edge | flip = not edge.flip }
+                        { edge | colors = reverseArray edge.colors }
                 )
     , image = flipMatrixAroundXAxis White tile.image
     , imageWithBorders = flipMatrixAroundXAxis White tile.imageWithBorders
@@ -404,7 +408,7 @@ flipTileAroundYAxis tile =
             |> List.map
                 (\edge ->
                     if edge.turns |> modBy 2 |> (==) 0 then
-                        { edge | flip = not edge.flip }
+                        { edge | colors = reverseArray edge.colors }
 
                     else
                         { edge | turns = edge.turns + 2 |> modBy 4 }
