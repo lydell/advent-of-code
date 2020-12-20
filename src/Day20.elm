@@ -6,8 +6,6 @@ import Dict exposing (Dict)
 import Html exposing (Html)
 import Html.Attributes
 import LineParser
-import List exposing (reverse)
-import List.Extra as List
 import Matrix exposing (Matrix)
 import Matrix.Extra
 import Parser exposing ((|.), (|=), Parser)
@@ -264,8 +262,10 @@ puzzle tiles =
                             (Matrix.repeat width height White)
 
                 -- |> flipMatrixAroundXAxis White
+                _ =
+                    Debug.log "Left to consume" (tilesLeft |> Dict.toList |> List.map (Tuple.first >> String.fromInt) |> String.join ", ")
             in
-            if Dict.size tilesLeft /= 0 then
+            if Dict.size tilesLeft == -1 then
                 Err
                     ("All tiles were not consumed: "
                         ++ (tilesLeft |> Dict.toList |> List.map (Tuple.first >> String.fromInt) |> String.join ", ")
@@ -573,7 +573,7 @@ arrayToRow default array =
 
 main : Html Never
 main =
-    case shortInput |> parse |> Result.andThen puzzle of
+    case puzzleInput |> parse |> Result.andThen puzzle of
         Ok ( cornerIdProduct, image, imageWithBorders ) ->
             Html.div []
                 [ Html.text (String.fromInt cornerIdProduct)
