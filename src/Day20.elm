@@ -6,6 +6,7 @@ import Dict exposing (Dict)
 import Html exposing (Html)
 import Html.Attributes
 import LineParser
+import List.Extra as List
 import Matrix exposing (Matrix)
 import Matrix.Extra
 import Parser exposing ((|.), (|=), Parser)
@@ -504,6 +505,47 @@ type Spot
     | SeaMonster
 
 
+findSeaMonsters : Matrix Color -> List ( Int, Matrix Spot )
+findSeaMonsters image =
+    List.range 0 3
+        |> List.concatMap
+            (\turns ->
+                [ ( turns, identity )
+                , ( turns, flipMatrixAroundXAxis White )
+                , ( turns, flipMatrixAroundYAxis White )
+                , ( turns, flipMatrixAroundXAxis White >> flipMatrixAroundYAxis White )
+                ]
+            )
+        |> List.filterMap
+            (\( turns, flip ) ->
+                let
+                    seaMonsterImage =
+                        image
+                            |> rotateMatrix turns White
+                            |> flip
+                            |> toSeaMonsterImage
+
+                    array =
+                        Matrix.toArray seaMonsterImage
+
+                    numRough =
+                        array
+                            |> Array.filter ((==) Rough)
+                            |> Array.length
+
+                    numSeaMonster =
+                        array
+                            |> Array.filter ((==) SeaMonster)
+                            |> Array.length
+                in
+                if numSeaMonster > 0 then
+                    Just ( numRough, seaMonsterImage )
+
+                else
+                    Nothing
+            )
+
+
 seaMonsterPattern : List ( Int, Int )
 seaMonsterPattern =
     """
@@ -529,8 +571,8 @@ seaMonsterPattern =
 
 
 toSeaMonsterImage : Matrix Color -> Matrix Spot
-toSeaMonsterImage matrix =
-    matrix
+toSeaMonsterImage image =
+    image
         |> Matrix.indexedMap (\x y color -> ( x, y, color ))
         |> Matrix.foldl
             (\( x, y, color ) seaMonsterImage ->
@@ -543,7 +585,7 @@ toSeaMonsterImage matrix =
                         coords
                             |> List.all
                                 (\( cx, cy ) ->
-                                    case Matrix.get cx cy matrix of
+                                    case Matrix.get cx cy image of
                                         Ok White ->
                                             False
 
@@ -565,7 +607,7 @@ toSeaMonsterImage matrix =
                 else
                     seaMonsterImage
             )
-            (Matrix.map colorToSpot matrix)
+            (Matrix.map colorToSpot image)
 
 
 colorToSpot : Color -> Spot
@@ -582,64 +624,23 @@ main : Html Never
 main =
     case puzzleInput |> parse |> Result.andThen puzzle of
         Ok ( cornerIdProduct, image, imageWithBorders ) ->
-            let
-                seaMonsterImages =
-                    List.range 0 3
-                        |> List.concatMap
-                            (\turns ->
-                                [ ( turns, identity )
-                                , ( turns, flipMatrixAroundXAxis White )
-                                , ( turns, flipMatrixAroundYAxis White )
-                                , ( turns, flipMatrixAroundXAxis White >> flipMatrixAroundYAxis White )
-                                ]
-                            )
-                        |> List.filterMap
-                            (\( turns, flip ) ->
-                                let
-                                    seaMonsterImage =
-                                        image
-                                            |> rotateMatrix turns White
-                                            |> flip
-                                            |> toSeaMonsterImage
-
-                                    array =
-                                        Matrix.toArray seaMonsterImage
-
-                                    numRough =
-                                        array
-                                            |> Array.filter ((==) Rough)
-                                            |> Array.length
-
-                                    numSeaMonster =
-                                        array
-                                            |> Array.filter ((==) SeaMonster)
-                                            |> Array.length
-                                in
-                                if numSeaMonster > 0 then
-                                    Just ( numRough, seaMonsterImage )
-
-                                else
-                                    Nothing
-                            )
-
-                _ =
-                    Debug.log "monster" seaMonsterPattern
-            in
             Html.div []
                 [ Html.text (String.fromInt cornerIdProduct)
                 , Html.div []
-                    (if List.isEmpty seaMonsterImages then
-                        [ Html.text "No sea monsters found." ]
+                    (case findSeaMonsters image of
+                        [] ->
+                            [ Html.text "No sea monsters found." ]
 
-                     else
-                        seaMonsterImages
-                            |> List.map
-                                (\( numRough, seaMonsterImage ) ->
-                                    Html.div []
-                                        [ Html.text (String.fromInt numRough)
-                                        , viewImage spotToString seaMonsterImage
-                                        ]
-                                )
+                        seaMonsterImages ->
+                            seaMonsterImages
+                                |> List.uniqueBy Tuple.first
+                                |> List.map
+                                    (\( numRough, seaMonsterImage ) ->
+                                        Html.div []
+                                            [ Html.text (String.fromInt numRough)
+                                            , viewImage spotToString seaMonsterImage
+                                            ]
+                                    )
                     )
                 , viewImage colorToString image
                 , viewImage colorToString imageWithBorders
@@ -659,7 +660,7 @@ viewImage toString matrix =
                     (\( x, y, color ) string ->
                         let
                             newline =
-                                if x == 0 then
+                                if x == 0 && y /= 0 then
                                     "\n"
 
                                 else
@@ -693,130 +694,3 @@ spotToString spot =
 
         SeaMonster ->
             "O"
-
-
-showResult : Result String a -> Html msg
-showResult result =
-    Html.output []
-        [ Html.text
-            (case result of
-                Ok int ->
-                    Debug.toString int
-
-                Err error ->
-                    error
-            )
-        ]
-
-
-shortInput : String
-shortInput =
-    """
-Tile 2311:
-..##.#..#.
-##..#.....
-#...##..#.
-####.#...#
-##.##.###.
-##...#.###
-.#.#.#..##
-..#....#..
-###...#.#.
-..###..###
-
-Tile 1951:
-#.##...##.
-#.####...#
-.....#..##
-#...######
-.##.#....#
-.###.#####
-###.##.##.
-.###....#.
-..#.#..#.#
-#...##.#..
-
-Tile 1171:
-####...##.
-#..##.#..#
-##.#..#.#.
-.###.####.
-..###.####
-.##....##.
-.#...####.
-#.##.####.
-####..#...
-.....##...
-
-Tile 1427:
-###.##.#..
-.#..#.##..
-.#.##.#..#
-#.#.#.##.#
-....#...##
-...##..##.
-...#.#####
-.#.####.#.
-..#..###.#
-..##.#..#.
-
-Tile 1489:
-##.#.#....
-..##...#..
-.##..##...
-..#...#...
-#####...#.
-#..#.#.#.#
-...#.#.#..
-##.#...##.
-..##.##.##
-###.##.#..
-
-Tile 2473:
-#....####.
-#..#.##...
-#.##..#...
-######.#.#
-.#...#.#.#
-.#########
-.###.#..#.
-########.#
-##...##.#.
-..###.#.#.
-
-Tile 2971:
-..#.#....#
-#...###...
-#.#.###...
-##.##..#..
-.#####..##
-.#..####.#
-#..#.#..#.
-..####.###
-..#.#.###.
-...#.#.#.#
-
-Tile 2729:
-...#.#.#.#
-####.#....
-..#.#.....
-....#..#.#
-.##..##.#.
-.#.####...
-####.#.#..
-##.####...
-##..#.##..
-#.##...##.
-
-Tile 3079:
-#.#.#####.
-.#..######
-..#.......
-######....
-####.#..#.
-.#...#.##.
-#.#####.##
-..#.###...
-..#.......
-..#.###...
-"""
