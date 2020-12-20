@@ -309,31 +309,35 @@ puzzleHelper ( x, y ) tileId tile ( initialTilesLeft, initialResult ) =
     nextTiles
         |> List.foldl
             (\( edge, ( nextTileId, nextTile ) ) ( tilesLeft, result ) ->
-                let
-                    nextCoord =
-                        case edge.turns |> modBy 4 of
-                            0 ->
-                                ( x, y - 1 )
+                if Dict.size result == -1 then
+                    ( tilesLeft, result )
 
-                            1 ->
-                                ( x + 1, y )
+                else
+                    let
+                        nextCoord =
+                            case edge.turns |> modBy 4 of
+                                0 ->
+                                    ( x, y - 1 )
 
-                            2 ->
-                                ( x, y + 1 )
+                                1 ->
+                                    ( x + 1, y )
 
-                            3 ->
-                                ( x - 1, y )
+                                2 ->
+                                    ( x, y + 1 )
 
-                            _ ->
-                                ( x, y )
+                                3 ->
+                                    ( x - 1, y )
 
-                    nextResult =
-                        Dict.insert nextCoord ( nextTileId, nextTile ) result
+                                _ ->
+                                    ( x, y )
 
-                    _ =
-                        Debug.log "fold" ( tileId, nextTileId, ( edge.turns, ( x, y ), nextCoord ) )
-                in
-                puzzleHelper nextCoord nextTileId nextTile ( tilesLeft, nextResult )
+                        nextResult =
+                            Dict.insert nextCoord ( nextTileId, nextTile ) result
+
+                        _ =
+                            Debug.log "fold" ( tileId, nextTileId, ( edge.turns, ( x, y ), nextCoord ) )
+                    in
+                    puzzleHelper nextCoord nextTileId nextTile ( tilesLeft, nextResult )
             )
             ( tilesLeftWithoutNext
             , initialResult
@@ -408,7 +412,10 @@ flipTileAroundXAxis tile =
             |> List.map
                 (\edge ->
                     if edge.turns |> modBy 2 |> (==) 0 then
-                        { edge | turns = edge.turns + 2 |> modBy 4 }
+                        { edge
+                            | turns = edge.turns + 2 |> modBy 4
+                            , colors = reverseArray edge.colors
+                        }
 
                     else
                         { edge | colors = reverseArray edge.colors }
@@ -428,7 +435,10 @@ flipTileAroundYAxis tile =
                         { edge | colors = reverseArray edge.colors }
 
                     else
-                        { edge | turns = edge.turns + 2 |> modBy 4 }
+                        { edge
+                            | turns = edge.turns + 2 |> modBy 4
+                            , colors = reverseArray edge.colors
+                        }
                 )
     , image = flipMatrixAroundYAxis White tile.image
     , imageWithBorders = flipMatrixAroundYAxis White tile.imageWithBorders
