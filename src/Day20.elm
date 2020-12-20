@@ -183,28 +183,6 @@ puzzle tiles =
                         firstTile
                         ( Dict.fromList rest, Dict.singleton ( 0, 0 ) ( firstTileId, firstTile ) )
 
-                _ =
-                    let
-                        width =
-                            maxX - minX + 1
-
-                        height =
-                            maxY - minY + 1
-
-                        mat =
-                            result
-                                |> Dict.toList
-                                |> List.foldl
-                                    (\( ( x, y ), ( id, _ ) ) matrix ->
-                                        Matrix.set (x - minX) (y - minY) id matrix
-                                    )
-                                    (Matrix.repeat width height 0)
-                    in
-                    List.range 0 (Matrix.height mat - 1)
-                        |> List.filterMap (\y -> Matrix.getRow y mat |> Result.toMaybe |> Maybe.map (Array.toList >> Debug.toString))
-                        |> String.join "  "
-                        |> Debug.log "puzzle"
-
                 coords =
                     Dict.keys result
 
@@ -260,31 +238,24 @@ puzzle tiles =
                                         matrix
                             )
                             (Matrix.repeat width height White)
-
-                -- |> flipMatrixAroundXAxis White
-                _ =
-                    Debug.log "Left to consume" (tilesLeft |> Dict.toList |> List.map (Tuple.first >> String.fromInt) |> String.join ", ")
             in
-            if Dict.size tilesLeft == -1 then
-                Err
-                    ("All tiles were not consumed: "
-                        ++ (tilesLeft |> Dict.toList |> List.map (Tuple.first >> String.fromInt) |> String.join ", ")
-                    )
-
-            else
+            if Dict.isEmpty tilesLeft then
                 Ok
                     ( cornerIdProduct
                     , joinImage (originalSize - 2) .image
                     , joinImage (originalSize + 2) .imageWithBorders
                     )
 
+            else
+                Err
+                    ("All tiles were not consumed: "
+                        ++ (tilesLeft |> Dict.toList |> List.map (Tuple.first >> String.fromInt) |> String.join ", ")
+                    )
+
 
 puzzleHelper : ( Int, Int ) -> Int -> Tile -> ( Dict Int Tile, Dict ( Int, Int ) ( Int, Tile ) ) -> ( Dict Int Tile, Dict ( Int, Int ) ( Int, Tile ) )
 puzzleHelper ( x, y ) tileId tile ( initialTilesLeft, initialResult ) =
     let
-        _ =
-            Debug.log "puzzleHelper" tileId
-
         nextTiles =
             tile.edges
                 |> List.filterMap
@@ -292,15 +263,6 @@ puzzleHelper ( x, y ) tileId tile ( initialTilesLeft, initialResult ) =
                         findNextTile edge initialTilesLeft
                             |> Maybe.map (Tuple.pair edge)
                     )
-                |> (\list ->
-                        let
-                            _ =
-                                list
-                                    |> List.map (\( edge, ( id, _ ) ) -> ( edge.turns, id ))
-                                    |> Debug.log "next tiles"
-                        in
-                        list
-                   )
 
         tilesLeftWithoutNext =
             nextTiles
@@ -309,35 +271,28 @@ puzzleHelper ( x, y ) tileId tile ( initialTilesLeft, initialResult ) =
     nextTiles
         |> List.foldl
             (\( edge, ( nextTileId, nextTile ) ) ( tilesLeft, result ) ->
-                if Dict.size result == -1 then
-                    ( tilesLeft, result )
+                let
+                    nextCoord =
+                        case edge.turns |> modBy 4 of
+                            0 ->
+                                ( x, y - 1 )
 
-                else
-                    let
-                        nextCoord =
-                            case edge.turns |> modBy 4 of
-                                0 ->
-                                    ( x, y - 1 )
+                            1 ->
+                                ( x + 1, y )
 
-                                1 ->
-                                    ( x + 1, y )
+                            2 ->
+                                ( x, y + 1 )
 
-                                2 ->
-                                    ( x, y + 1 )
+                            3 ->
+                                ( x - 1, y )
 
-                                3 ->
-                                    ( x - 1, y )
+                            _ ->
+                                ( x, y )
 
-                                _ ->
-                                    ( x, y )
-
-                        nextResult =
-                            Dict.insert nextCoord ( nextTileId, nextTile ) result
-
-                        _ =
-                            Debug.log "fold" ( tileId, nextTileId, ( edge.turns, ( x, y ), nextCoord ) )
-                    in
-                    puzzleHelper nextCoord nextTileId nextTile ( tilesLeft, nextResult )
+                    nextResult =
+                        Dict.insert nextCoord ( nextTileId, nextTile ) result
+                in
+                puzzleHelper nextCoord nextTileId nextTile ( tilesLeft, nextResult )
             )
             ( tilesLeftWithoutNext
             , initialResult
@@ -378,21 +333,6 @@ findNextTile wantedEdge =
 
 transformTile : Int -> Bool -> Edge -> Edge -> Tile -> Tile
 transformTile id flip otherEdge edge tile =
-    let
-        _ =
-            Debug.log "transformTile"
-                ( id
-                , ( edge.turns, otherEdge.turns, otherEdge.turns + 2 - edge.turns )
-                , if not flip then
-                    "identity"
-
-                  else if edge.turns |> modBy 2 |> (==) 0 then
-                    "flipTileAroundYAxis"
-
-                  else
-                    "flipTileAroundXAxis"
-                )
-    in
     (if not flip then
         tile
 
@@ -626,69 +566,6 @@ colorToString color =
 
         Black ->
             "#"
-
-
-
--- Html.div []
---     [ showResult (solution1 puzzleInput)
--- , case parse puzzleInput of
---     Ok tiles ->
---         tiles
---             |> List.map
---                 (\tile ->
---                     let
---                         others =
---                             tiles |> List.filter (\tile2 -> tile2.id /= tile.id)
---                         edges =
---                             [ ( "Top", Matrix.getRow 0 tile.matrix )
---                             , ( "Bottom", Matrix.getRow (size - 1) tile.matrix )
---                             , ( "Left", Matrix.getColumn 0 tile.matrix )
---                             , ( "Right", Matrix.getColumn (size - 1) tile.matrix )
---                             ]
---                                 |> List.filterMap
---                                     (\( text, result ) ->
---                                         result |> Result.toMaybe |> Maybe.map (Tuple.pair text)
---                                     )
---                                 |> List.map
---                                     (Tuple.mapSecond
---                                         (\edge ->
---                                             others
---                                                 |> List.map (matches edge)
---                                                 |> List.filter (\n -> n > 0)
---                                                 |> List.length
---                                         )
---                                     )
---                     in
---                     ( tile, edges )
---                 )
---             |> List.filter
---                 (\( _, edges ) ->
---                     edges
---                         |> List.filter (\( _, n ) -> n == 0)
---                         |> List.length
---                         |> (\n -> n >= 2)
---                 )
---             |> (\list ->
---                     let
---                         _ =
---                             Debug.log "product" (list |> List.map (Tuple.first >> .id) |> List.product)
---                     in
---                     list
---                )
---             |> List.map
---                 (\( tile, edges ) ->
---                     Html.div [ Html.Attributes.style "margin-top" "24px" ]
---                         [ Html.div [ Html.Attributes.style "font-weight" "bold" ]
---                             [ Html.text (String.fromInt tile.id) ]
---                         , edges
---                             |> List.map (\( text, num ) -> Html.div [] [ Html.text (text ++ ": " ++ String.fromInt num) ])
---                             |> Html.div []
---                         ]
---                 )
---             |> Html.div []
---     Err message ->
---         Html.text message
--- ]
 
 
 showResult : Result String a -> Html msg
