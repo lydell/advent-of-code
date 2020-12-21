@@ -3,6 +3,7 @@ module Day21 exposing (..)
 import Day21Input exposing (puzzleInput)
 import Dict exposing (Dict)
 import Html exposing (Html)
+import LineParser
 import Parser exposing ((|.), (|=), Parser)
 import Parser.Extra
 import Set exposing (Set)
@@ -54,13 +55,13 @@ allergensParser =
         |> Parser.map Set.fromList
 
 
-solution1 : String -> Result String Int
-solution1 =
-    parse >> Result.map solve1
+solution : String -> Result String ( Int, String )
+solution =
+    parse >> Result.andThen solve
 
 
-solve1 : List Food -> Int
-solve1 foods =
+solve : List Food -> Result String ( Int, String )
+solve foods =
     let
         ingredientsPerAllergen : Dict String (Set String)
         ingredientsPerAllergen =
@@ -79,32 +80,58 @@ solve1 foods =
                                 dict
                     )
                     Dict.empty
-                |> Debug.log "ingredientsPerAllergen"
 
-        possiblySolved : List ( String, Set String )
+        possiblySolved : Result String (List ( String, String ))
         possiblySolved =
             ingredientsPerAllergen
                 |> Dict.toList
                 |> untilUnchanged removeSinglesFromOthers
-                |> Debug.log "left"
+                |> LineParser.parseGeneral "Allergen"
+                    (\( allergen, ingredients ) ->
+                        allergen ++ ": " ++ (ingredients |> Set.toList |> String.join ", ")
+                    )
+                    (\( allergen, ingredients ) ->
+                        case ingredients |> Set.toList of
+                            [ single ] ->
+                                Ok ( allergen, single )
 
-        allPossiblySolvedIngredients : Set String
-        allPossiblySolvedIngredients =
-            possiblySolved |> List.foldl (Tuple.second >> Set.union) Set.empty |> Debug.log "allPossiblySolvedIngredients"
+                            items ->
+                                Err ("Expected a single ingredient but got " ++ String.fromInt (List.length items))
+                    )
+    in
+    Result.map (solveHelper foods) possiblySolved
 
+
+solveHelper : List Food -> List ( String, String ) -> ( Int, String )
+solveHelper foods solved =
+    let
         allIngredients : List String
         allIngredients =
-            foods |> List.concatMap (.ingredients >> Set.toList) |> Debug.log "allIngredients"
+            foods |> List.concatMap (.ingredients >> Set.toList)
 
         noAllergens : Set String
         noAllergens =
-            allPossiblySolvedIngredients
+            solved
+                |> List.map Tuple.second
+                |> Set.fromList
                 |> Set.diff (Set.fromList allIngredients)
-                |> Debug.log "noAllergens"
+
+        numOccurrancesOfIngredientsWithoutAllergens : Int
+        numOccurrancesOfIngredientsWithoutAllergens =
+            allIngredients
+                |> List.filter (\ingredient -> Set.member ingredient noAllergens)
+                |> List.length
+
+        canonicalDangerousIngredientsList : String
+        canonicalDangerousIngredientsList =
+            solved
+                |> List.sortBy Tuple.first
+                |> List.map Tuple.second
+                |> String.join ","
     in
-    allIngredients
-        |> List.filter (\ingredient -> Set.member ingredient noAllergens)
-        |> List.length
+    ( numOccurrancesOfIngredientsWithoutAllergens
+    , canonicalDangerousIngredientsList
+    )
 
 
 untilUnchanged : (a -> a) -> a -> a
@@ -160,29 +187,21 @@ removeSinglesFromOthersHelper before current after =
 main : Html Never
 main =
     Html.div []
-        [ showResult (solution1 puzzleInput)
+        [ showResult (solution puzzleInput)
         ]
 
 
-showResult : Result String Int -> Html msg
+showResult : Result String ( Int, String ) -> Html msg
 showResult result =
-    Html.output []
-        [ Html.text
-            (case result of
-                Ok int ->
-                    String.fromInt int
+    Html.div []
+        (case result of
+            Ok ( int, string ) ->
+                [ Html.output []
+                    [ Html.text (String.fromInt int) ]
+                , Html.output []
+                    [ Html.text string ]
+                ]
 
-                Err error ->
-                    error
-            )
-        ]
-
-
-shortInput : String
-shortInput =
-    """
-mxmxvkd kfcds sqjhc nhms (contains dairy, fish)
-trh fvjkl sbzzf mxmxvkd (contains dairy)
-sqjhc fvjkl (contains soy)
-sqjhc mxmxvkd sbzzf (contains fish)
-"""
+            Err error ->
+                [ Html.text error ]
+        )
