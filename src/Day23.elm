@@ -64,18 +64,18 @@ doOneRound maximum cups =
 
 getDestination : Int -> Int -> Deque Int -> ( Deque Int, Int, Deque Int )
 getDestination maximum target rest =
-    getDestinationHelper maximum target Deque.empty rest
+    getDestinationHelper maximum target rest Deque.empty
 
 
 getDestinationHelper : Int -> Int -> Deque Int -> Deque Int -> ( Deque Int, Int, Deque Int )
 getDestinationHelper maximum target left right =
-    case Deque.popFront right of
-        ( Just first, rest ) ->
-            if first == target then
-                ( left, first, rest )
+    case Deque.popBack left of
+        ( Just last, rest ) ->
+            if last == target then
+                ( rest, last, right )
 
             else
-                getDestinationHelper maximum target (left |> Deque.pushBack first) rest
+                getDestinationHelper maximum target rest (right |> Deque.pushFront last)
 
         ( Nothing, _ ) ->
             let
@@ -86,7 +86,7 @@ getDestinationHelper maximum target left right =
                     else
                         target - 1
             in
-            getDestinationHelper maximum nextTarget Deque.empty left
+            getDestinationHelper maximum nextTarget right Deque.empty
 
 
 solution2 : List Int -> String
