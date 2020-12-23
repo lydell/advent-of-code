@@ -1,67 +1,92 @@
 module Day23 exposing (..)
 
 import Day23Input exposing (puzzleInput)
+import Deque exposing (Deque)
 import Html exposing (Html)
 
 
 solution1 : List Int -> String
 solution1 cups =
+    let
+        maximum =
+            List.maximum cups |> Maybe.withDefault 0
+    in
     List.repeat 100 ()
-        |> List.foldl (always doOneRound) cups
+        |> List.foldl (always (doOneRound maximum)) (Deque.fromList cups)
         |> getOrderString
 
 
-getOrderString : List Int -> String
+getOrderString : Deque Int -> String
 getOrderString cups =
     let
         ( before, _, after ) =
-            getDestination 1 cups
+            getDestination 1 1 cups
     in
-    after ++ before |> List.map String.fromInt |> String.join ""
+    after
+        |> append before
+        |> Deque.map String.fromInt
+        |> Deque.toList
+        |> String.join ""
 
 
-doOneRound : List Int -> List Int
-doOneRound cups =
-    case cups of
-        first :: second :: third :: fourth :: rest ->
+append : Deque a -> Deque a -> Deque a
+append a b =
+    Deque.append b a
+
+
+doOneRound : Int -> Deque Int -> Deque Int
+doOneRound maximum cups =
+    case Deque.popFront cups of
+        ( Just first, rest ) ->
             let
+                pickedUp =
+                    rest |> Deque.left 3
+
                 ( before, destination, after ) =
-                    getDestination (first - 1) rest
+                    getDestination maximum
+                        (first - 1)
+                        (Deque.dropLeft (Deque.length pickedUp) rest)
 
-                _ =
-                    Debug.log "dest" ( List.length before, destination, List.length after )
+                -- _ =
+                --     Debug.log "x" ( first, destination )
+                -- _ =
+                --     Debug.log "dest" ( Deque.length before, destination, Deque.length after )
             in
-            before ++ [ destination, second, third, fourth ] ++ after ++ [ first ]
+            before
+                |> Deque.pushBack destination
+                |> append pickedUp
+                |> append after
+                |> Deque.pushBack first
 
-        _ ->
+        ( Nothing, _ ) ->
             cups
 
 
-getDestination : Int -> List Int -> ( List Int, Int, List Int )
-getDestination target rest =
-    getDestinationHelper target [] rest
+getDestination : Int -> Int -> Deque Int -> ( Deque Int, Int, Deque Int )
+getDestination maximum target rest =
+    getDestinationHelper maximum target Deque.empty rest
 
 
-getDestinationHelper : Int -> List Int -> List Int -> ( List Int, Int, List Int )
-getDestinationHelper target left right =
-    case right of
-        first :: rest ->
+getDestinationHelper : Int -> Int -> Deque Int -> Deque Int -> ( Deque Int, Int, Deque Int )
+getDestinationHelper maximum target left right =
+    case Deque.popFront right of
+        ( Just first, rest ) ->
             if first == target then
-                ( List.reverse left, first, rest )
+                ( left, first, rest )
 
             else
-                getDestinationHelper target (first :: left) rest
+                getDestinationHelper maximum target (left |> Deque.pushBack first) rest
 
-        [] ->
+        ( Nothing, _ ) ->
             let
                 nextTarget =
                     if target <= 1 then
-                        List.maximum left |> Maybe.withDefault -1
+                        maximum
 
                     else
                         target - 1
             in
-            getDestinationHelper nextTarget [] (List.reverse left)
+            getDestinationHelper maximum nextTarget Deque.empty left
 
 
 solution2 : List Int -> String
@@ -72,26 +97,37 @@ solution2 initialCups =
                 |> List.maximum
                 |> Maybe.withDefault 0
 
+        maximum =
+            1000000
+
         cups =
-            initialCups ++ List.range (max + 1) 1000000
+            (initialCups ++ List.range (max + 1) maximum)
+                |> Deque.fromList
     in
-    List.repeat 10000000 ()
-        |> List.foldl (always doOneRound) cups
+    List.range 1 10000000
+        |> List.foldl (log >> always (doOneRound maximum)) cups
         |> getStarsProduct
 
 
-getStarsProduct : List Int -> String
+log n =
+    if n - 1 |> modBy 10 |> (==) 0 then
+        Debug.log "n" n
+
+    else
+        n
+
+
+getStarsProduct : Deque Int -> String
 getStarsProduct cups =
     let
         ( before, _, after ) =
-            getDestination 1 cups
+            getDestination 1 1 cups
     in
-    case after of
-        first :: second :: rest ->
-            first * second |> String.fromInt
-
-        _ ->
-            "Too short list."
+    after
+        |> Deque.left 2
+        |> Deque.toList
+        |> List.product
+        |> String.fromInt
 
 
 main : Html Never
