@@ -27,6 +27,9 @@ doOneRound cups =
             let
                 ( before, destination, after ) =
                     getDestination (first - 1) rest
+
+                _ =
+                    Debug.log "dest" ( List.length before, destination, List.length after )
             in
             before ++ [ destination, second, third, fourth ] ++ after ++ [ first ]
 
@@ -61,24 +64,41 @@ getDestinationHelper target left right =
             getDestinationHelper nextTarget [] (List.reverse left)
 
 
+solution2 : List Int -> String
+solution2 initialCups =
+    let
+        max =
+            initialCups
+                |> List.maximum
+                |> Maybe.withDefault 0
+
+        cups =
+            initialCups ++ List.range (max + 1) 1000000
+    in
+    List.repeat 10000000 ()
+        |> List.foldl (always doOneRound) cups
+        |> getStarsProduct
+
+
+getStarsProduct : List Int -> String
+getStarsProduct cups =
+    let
+        ( before, _, after ) =
+            getDestination 1 cups
+    in
+    case after of
+        first :: second :: rest ->
+            first * second |> String.fromInt
+
+        _ ->
+            "Too short list."
+
+
 main : Html Never
 main =
     Html.div []
-        [ Html.text (solution1 puzzleInput)
-        ]
-
-
-showResult : Result String String -> Html msg
-showResult result =
-    Html.output []
-        [ Html.text
-            (case result of
-                Ok string ->
-                    string
-
-                Err error ->
-                    error
-            )
+        -- [ Html.text (solution1 puzzleInput)
+        [ Html.text (solution2 puzzleInput)
         ]
 
 
