@@ -2,6 +2,7 @@ module Day24 exposing (..)
 
 import Day24Input exposing (puzzleInput)
 import Hexagons.Hex as Hex exposing (Direction, Hex)
+import Hexagons.Map
 import Html exposing (Html)
 import LineParser
 import Regex exposing (Regex)
@@ -64,7 +65,7 @@ solve1 =
                         )
                         (Hex.intFactory ( 0, 0 ))
                         directions
-                        |> hexToTriple
+                        |> Hexagons.Map.hashHex
             in
             if Set.member next blacks then
                 Set.remove next blacks
@@ -74,14 +75,6 @@ solve1 =
         )
         Set.empty
         >> Set.size
-
-
-hexToTriple : Hex -> ( Int, Int, Int )
-hexToTriple hex =
-    ( Hex.intQ hex
-    , Hex.intR hex
-    , Hex.intS hex
-    )
 
 
 main : Html Never
