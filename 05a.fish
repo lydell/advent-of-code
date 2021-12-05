@@ -3,7 +3,7 @@ if test (count $part) = 0
     set part a
 end
 
-rg ',' -r ' ' | while read x1 y1 _ x2 y2
+cat | string replace -a ',' ' ' | while read x1 y1 _ x2 y2
     if test $x1 = $x2
         echo $x1:(seq $y1 $y2)
     else if test $y1 = $y2
