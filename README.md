@@ -9,6 +9,6 @@ fish 01a.fish < 01.example.txt
 fish 01a.fish < 01.input.txt
 ```
 
-Some solutions need external programs, such as `rg` (ripgrep) or BSD `rs`.
+Some solutions need external programs, such as `rg` (ripgrep), BSD `rs` or GNU `parallel`.
 
 License: Public domain.
