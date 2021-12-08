@@ -1,23 +1,15 @@
-function common -a a b
-    string replace -ar "[^$a.]" '' $b
-end
-
-function diff -a a b
-    string replace -ar "[$b.]" '' $a
-end
-
-function common_list -a first
+function common -a first
     set s $first
     for x in $argv[2..]
-        set s (common $s $x)
+        set s (string replace -ar "[^$s.]" '' $x)
     end
     echo $s
 end
 
-function diff_list -a first
+function diff -a first
     set s $first
     for x in $argv[2..]
-        set s (diff $s $x)
+        set s (string replace -ar "[$x.]" '' $s)
     end
     echo $s
 end
@@ -26,15 +18,7 @@ function includes -a a b
     string match -qr $a $b
 end
 
-function sum
-    set s 0
-    for x in $argv
-        set s (math $s + $x)
-    end
-    echo $s
-end
-
-set numbers
+set sum 0
 
 while read -d ' | ' left_string right_string
     set left (string split ' ' $left_string | perl -e 'print sort { length($a) <=> length($b) } <>')
@@ -45,14 +29,14 @@ while read -d ' | ' left_string right_string
     set length_five $left[4..6]
     set length_six $left[7..9]
     set a (diff $seven $one)
-    set dg_five (diff (common_list $length_five) $a)
-    set bfg_six (diff (common_list $length_six) $a)
+    set dg_five (diff (common $length_five) $a)
+    set bfg_six (diff (common $length_six) $a)
     set g (common $dg_five $bfg_six)
     set d (diff $dg_five $g)
-    set b (diff_list $four $one $d)
-    set f (diff_list $bfg_six $b $g)
+    set b (diff $four $one $d)
+    set f (diff $bfg_six $b $g)
     set c (diff $one $f)
-    set e (diff_list $eight $a $b $c $d $f $g)
+    set e (diff $eight $a $b $c $d $f $g)
 
     function identify -a item
         switch (string length $item)
@@ -88,7 +72,7 @@ while read -d ' | ' left_string right_string
         set -a digits (identify $item)
     end
 
-    set -a numbers (string join '' $digits)
+    set sum (math $sum + (string join '' $digits))
 end
 
-sum $numbers
+echo $sum
