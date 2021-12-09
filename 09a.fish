@@ -36,6 +36,6 @@ switch $part
     case a
         echo $sum
     case b
-        string join \n $lines
+        string join \n $lines >(status dirname)/09.lines.tmp
         string join \n $low_points
 end

@@ -1,4 +1,15 @@
-set lines
+if test (count $argv) = 0
+    set low_points (fish (status dirname)/09a.fish b)
+    set num_low_points (count $low_points)
+    set threads (parallel --number-of-threads)
+    set max_args (math "ceil($num_low_points / $threads)")
+    set basins (string join \n $low_points | parallel --max-args=$max_args fish (status filename))
+    set sorted_basins (string join \n $basins | sort -hr)
+    math $sorted_basins[1] \* $sorted_basins[2] \* $sorted_basins[3]
+    exit
+end
+
+set lines (cat (status dirname)/09.lines.tmp)
 
 set seen_basin_coords
 function get_basin -a last_n x y
@@ -13,16 +24,8 @@ function get_basin -a last_n x y
     end
 end
 
-set basins
-
-fish (status dirname)/09a.fish b | while read x y
-    if test $y = ''
-        set -a lines $x
-    else
-        set seen_basin_coords
-        set -a basins (get_basin 0 $x $y)
-    end
+for line in $argv
+    set point (string split ' ' $line)
+    set seen_basin_coords
+    get_basin 0 $point[1] $point[2]
 end
-
-set sorted_basins (string join \n $basins | sort -hr)
-math $sorted_basins[1] \* $sorted_basins[2] \* $sorted_basins[3]

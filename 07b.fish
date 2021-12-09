@@ -22,9 +22,9 @@ if test (count $argv) = 0
     string join \n $positions >$positions_file
 
     set threads (parallel --number-of-threads)
-    set max_args (math "max(100, ceil(($high - $low) / $threads))")
+    set max_args (math "ceil(($high - $low) / $threads)")
 
-    get_smallest (seq $low $high | parallel --max-args=$max_args fish (status dirname)/07b.fish)
+    get_smallest (seq $low $high | parallel --max-args=$max_args fish (status filename))
     exit
 end
 
