@@ -3,9 +3,8 @@ if test (count $argv) = 0
     set num_low_points (count $low_points)
     set threads (parallel --number-of-threads)
     set max_args (math "ceil($num_low_points / $threads)")
-    set basins (string join \n $low_points | parallel --max-args=$max_args fish (status filename))
-    set sorted_basins (string join \n $basins | sort -hr)
-    math $sorted_basins[1] \* $sorted_basins[2] \* $sorted_basins[3]
+    set basins (string join \n $low_points | parallel --max-args=$max_args fish (status filename) | sort -hr)
+    math $basins[1] \* $basins[2] \* $basins[3]
     exit
 end
 
