@@ -1,14 +1,8 @@
+source (status dirname)/helpers.fish
+
 set num_days $argv[1]
 if test (count $num_days) = 0
     set num_days 80
-end
-
-function sum
-    set s 0
-    for x in $argv
-        set s (math $s + $x)
-    end
-    echo $s
 end
 
 set fish 0 0 0 0 0 0 0 0 0

@@ -1,3 +1,5 @@
+source (status dirname)/helpers.fish
+
 set size 5
 
 function is_winning_line
@@ -21,14 +23,6 @@ function calculate_score -a number
     set board $argv[2..]
     set unmarked (string match -vr '^$|X$' (string split ' ' $board))
     math (sum $unmarked) \* $number
-end
-
-function sum
-    set s 0
-    for x in $argv
-        set s (math $s + $x)
-    end
-    echo $s
 end
 
 set lines (cat)
