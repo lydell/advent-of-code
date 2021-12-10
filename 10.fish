@@ -1,4 +1,4 @@
-function calculate_score
+function calculate_autocomplete_score
     set s 0
     for char in $argv
         set s (math $s \* 5)
@@ -16,12 +16,14 @@ function calculate_score
     echo $s
 end
 
-set scores
+set syntax_score 0
+set autocomplete_scores
+
 while read line
-    echo line $line
     set chars (string split '' $line)
     set stack
-    set state incomplete
+    set previous_syntax_score $syntax_score
+
     for char in $chars
         switch $char
             case '('
@@ -36,40 +38,41 @@ while read line
                 if test $stack[-1] = '('
                     set -e stack[-1]
                 else
-                    set state corrupted
+                    set syntax_score (math $syntax_score + 3)
                     break
                 end
             case ']'
                 if test $stack[-1] = '['
                     set -e stack[-1]
                 else
-                    set state corrupted
+                    set syntax_score (math $syntax_score + 57)
                     break
                 end
             case '}'
                 if test $stack[-1] = '{'
                     set -e stack[-1]
                 else
-                    set state corrupted
+                    set syntax_score (math $syntax_score + 1197)
                     break
                 end
             case '>'
                 if test $stack[-1] = '<'
                     set -e stack[-1]
                 else
-                    set state corrupted
+                    set syntax_score (math $syntax_score + 25137)
                     break
                 end
         end
     end
-    switch $state
-        case incomplete
-            set -a scores (calculate_score $stack[-1..1])
-        case corrupted
+
+    if test $previous_syntax_score = $syntax_score
+        set -a autocomplete_scores (calculate_autocomplete_score $stack[-1..1])
     end
 end
 
-echo $scores
-set num_scores (count $scores)
-set sorted (string join \n $scores | sort -n)
-echo $sorted[(math "ceil($num_scores / 2)")]
+set num_scores (count $autocomplete_scores)
+set sorted (string join \n $autocomplete_scores | sort -n)
+set autocomplete_score $sorted[(math "ceil($num_scores / 2)")]
+
+echo $syntax_score
+echo $autocomplete_score
