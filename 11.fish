@@ -1,3 +1,8 @@
+set sleep $argv[1]
+if test (count $sleep) = 0
+    set sleep 0
+end
+
 set lines (cat)
 set width (string length $lines[1])
 set height (count $lines)
@@ -40,6 +45,7 @@ end
 set count 0
 set count100
 set step 0
+set step_all_flash
 
 function visualize
     if test $step -gt 0
@@ -49,7 +55,11 @@ function visualize
     if test (count $count100) = 1
         set count100_text ", "(set_color --dim)"flashes at step 100:"(set_color normal)" $count100"
     end
-    echo (set_color --dim)step:(set_color normal) $step, (set_color --dim)flashes:(set_color normal) $count$count100_text
+    set step_all_flash_text ''
+    if test (count $step_all_flash) = 1
+        set step_all_flash_text ", "(set_color --dim)"first step all flash:"(set_color normal)" $step_all_flash"
+    end
+    echo (set_color --dim)step:(set_color normal) $step, (set_color --dim)flashes:(set_color normal) $count$count100_text$step_all_flash_text
     echo (set_color --dim)
     for y in (seq $height)
         echo $$y | string replace -ar '\d{2,}' (set_color normal)(set_color --bold)0(set_color normal)(set_color --dim) | string replace -ar ' ' ''
@@ -60,8 +70,7 @@ end
 while true
     visualize
     set flashes
-    set sum 0
-    set step (math $step + 1)
+    set num0 0
 
     for y in (seq $height)
         set line $$y
@@ -69,17 +78,19 @@ while true
             set n $line[$x]
             if test $n -gt 9
                 set n 0
+                set num0 (math $num0 + 1)
             else if test $n = 9
                 set -a flashes $x $y
             end
-            set sum (math $sum + $n)
             set "$y"[$x] (math $n + 1)
         end
     end
 
-    if test $sum = 0
-        break
+    if test $num0 = (math $width \* $height) && test (count $step_all_flash) = 0
+        set step_all_flash $step
     end
+    sleep (math "$sleep * (1 + $num0 / 100)")
+    set step (math $step + 1)
 
     while test (count $flashes) -gt 0
         set x $flashes[1]
