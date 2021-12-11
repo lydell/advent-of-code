@@ -1,3 +1,8 @@
+set part $argv[1]
+if test (count $part) = 0
+    set part a
+end
+
 set lines (cat)
 set width (string length $lines[1])
 set height (count $lines)
@@ -37,12 +42,14 @@ function neighbors -a x y
     end
 end
 
-set steps 100
 set count 0
+set step 0
 
-for step in (seq $steps)
-    echo -n 1>&2 $step/$steps\r
+while true
+    set step (math $step + 1)
+    echo -n $step\r
     set flashes
+    set sum 0
 
     for y in (seq $height)
         set line $$y
@@ -53,8 +60,13 @@ for step in (seq $steps)
             else if test $n = 9
                 set -a flashes $x $y
             end
+            set sum (math $sum + $n)
             set "$y"[$x] (math $n + 1)
         end
+    end
+
+    if test $part = b && test $sum = 0
+        break
     end
 
     while test (count $flashes) -gt 0
@@ -73,7 +85,15 @@ for step in (seq $steps)
             set "$y2"[$x2] (math $n + 1)
         end
     end
+
+    if test $part = a && test $step = 100
+        break
+    end
 end
 
-echo 1>&2
-echo $count
+switch $part
+    case a
+        echo $count
+    case b
+        math $step - 1
+end
