@@ -1,8 +1,3 @@
-set part $argv[1]
-if test (count $part) = 0
-    set part a
-end
-
 set lines (cat)
 set width (string length $lines[1])
 set height (count $lines)
@@ -43,13 +38,30 @@ function neighbors -a x y
 end
 
 set count 0
+set count100
 set step 0
 
+function visualize
+    if test $step -gt 0
+        tput cuu (math $height + 2)
+    end
+    set count100_text ''
+    if test (count $count100) = 1
+        set count100_text ", "(set_color --dim)"flashes at step 100:"(set_color normal)" $count100"
+    end
+    echo (set_color --dim)step:(set_color normal) $step, (set_color --dim)flashes:(set_color normal) $count$count100_text
+    echo (set_color --dim)
+    for y in (seq $height)
+        echo $$y | string replace -ar '\d{2,}' (set_color normal)(set_color --bold)0(set_color normal)(set_color --dim) | string replace -ar ' ' ''
+    end
+    set_color normal
+end
+
 while true
-    set step (math $step + 1)
-    echo -n $step\r
+    visualize
     set flashes
     set sum 0
+    set step (math $step + 1)
 
     for y in (seq $height)
         set line $$y
@@ -65,7 +77,7 @@ while true
         end
     end
 
-    if test $part = b && test $sum = 0
+    if test $sum = 0
         break
     end
 
@@ -83,14 +95,7 @@ while true
         end
     end
 
-    if test $part = a && test $step = 100
-        break
+    if test $step = 100
+        set count100 $count
     end
-end
-
-switch $part
-    case a
-        echo $count
-    case b
-        math $step - 1
 end
