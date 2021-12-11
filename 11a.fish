@@ -17,28 +17,28 @@ function neighbors -a x y
     set yp (math $y - 1)
     set yn (math $y + 1)
     if test $xp -ge 1 && test $yp -ge 1
-        echo $xp:$yp
+        echo $xp $yp
     end
     if test $yp -ge 1
-        echo $x:$yp
+        echo $x $yp
     end
     if test $xn -le $width && test $yp -ge 1
-        echo $xn:$yp
+        echo $xn $yp
     end
     if test $xn -le $width
-        echo $xn:$y
+        echo $xn $y
     end
     if test $xn -le $width && test $yn -le $height
-        echo $xn:$yn
+        echo $xn $yn
     end
     if test $yn -le $height
-        echo $x:$yn
+        echo $x $yn
     end
     if test $xp -ge 1 && test $yn -le $height
-        echo $xp:$yn
+        echo $xp $yn
     end
     if test $xp -ge 1
-        echo $xp:$y
+        echo $xp $y
     end
 end
 
@@ -74,10 +74,7 @@ while true
         set y $flashes[2]
         set -e flashes[1..2]
         set count (math $count + 1)
-        for item in (neighbors $x $y)
-            set item (string split ':' $item)
-            set x2 $item[1]
-            set y2 $item[2]
+        neighbors $x $y | while read x2 y2
             set n $$y2[1][$x2]
             if test $n = 9
                 set -a flashes $x2 $y2
