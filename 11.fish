@@ -6,6 +6,7 @@ end
 set lines (cat)
 set width (string length $lines[1])
 set height (count $lines)
+set size (math $width \* $height)
 
 for i in (seq $height)
     set $i (string split '' $lines[$i])
@@ -86,10 +87,10 @@ while true
         end
     end
 
-    if test $num0 = (math $width \* $height) && test (count $step_all_flash) = 0
+    if test $num0 = $size && test (count $step_all_flash) = 0
         set step_all_flash $step
     end
-    sleep (math "$sleep * (1 + $num0 / 100)")
+    sleep (math "$sleep * (1 + $num0 / $size)")
     set step (math $step + 1)
 
     while test (count $flashes) -gt 0
