@@ -18,8 +18,8 @@ function is_upper -a s
 end
 
 cat $lines_file | while read -d - from to
-    set $from $$from $to
-    set $to $$to $from
+    set -a $from $to
+    set -a $to $from
 end
 
 # Chosen via trial and error.

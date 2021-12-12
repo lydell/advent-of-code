@@ -23,7 +23,7 @@ function mark_winning_boards
         end
         set board (get_board $i $boards)
         if is_winning_line $board || is_winning_line (string join \n $board | rs -T)
-            set won_board_numbers $won_board_numbers $i
+            set -a won_board_numbers $i
         end
     end
 end
