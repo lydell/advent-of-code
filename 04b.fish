@@ -52,7 +52,7 @@ for number in $numbers
     set boards (string replace -r "\b$number\b" "$number"X $boards)
     mark_winning_boards $boards
     set winning_board_number $won_board_numbers[-1]
-    if test (count $winning_board_number) = 1 && test $winning_board_number != $last_winning_board_number
+    if set -q winning_board_number[1] && test $winning_board_number != $last_winning_board_number
         set last_winning_board (get_board $winning_board_number $boards)
         set last_winning_board_number $winning_board_number
         set last_winning_number $number

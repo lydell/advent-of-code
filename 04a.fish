@@ -33,7 +33,7 @@ set boards (string match -v '' $lines[2..])
 for number in $numbers
     set boards (string replace -r "\b$number\b" "$number"X $boards)
     set winning_board (get_winning_board $boards)
-    if test (count $winning_board) -gt 0
+    if set -q winning_board[1]
         calculate_score $number $winning_board
         exit
     end

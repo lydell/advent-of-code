@@ -1,5 +1,5 @@
 set part $argv[1]
-if test (count $part) = 0
+if not set -q part[1]
     set part a
 end
 

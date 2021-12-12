@@ -1,5 +1,5 @@
 set sleep $argv[1]
-if test (count $sleep) = 0
+if not set -q sleep[1]
     set sleep 0
 end
 
@@ -53,11 +53,11 @@ function visualize
         tput cuu (math $height + 2)
     end
     set count100_text ''
-    if test (count $count100) = 1
+    if set -q count100[1]
         set count100_text ", "(set_color --dim)"flashes at step 100:"(set_color normal)" $count100"
     end
     set step_all_flash_text ''
-    if test (count $step_all_flash) = 1
+    if set -q step_all_flash[1]
         set step_all_flash_text ", "(set_color --dim)"first step all flash:"(set_color normal)" $step_all_flash"
     end
     echo (set_color --dim)step:(set_color normal) $step, (set_color --dim)flashes:(set_color normal) $count$count100_text$step_all_flash_text
@@ -87,13 +87,13 @@ while true
         end
     end
 
-    if test $num0 = $size && test (count $step_all_flash) = 0
+    if test $num0 = $size && not set -q step_all_flash[1]
         set step_all_flash $step
     end
     sleep (math "$sleep * (1 + $num0 / $size)")
     set step (math $step + 1)
 
-    while test (count $flashes) -gt 0
+    while set -q flashes[1]
         set x $flashes[1]
         set y $flashes[2]
         set -e flashes[1..2]

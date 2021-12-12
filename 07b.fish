@@ -11,7 +11,7 @@ end
 set counts_file (status dirname)/07b.counts.tmp
 set positions_file (status dirname)/07b.positions.tmp
 
-if test (count $argv) = 0
+if not set -q argv[1]
     set positions_with_counts (cat | string split , | sort -h | uniq -c | string trim)
     set counts (string join \n $positions_with_counts | cut -d ' ' -f 1)
     set positions (string join \n $positions_with_counts | cut -d ' ' -f 2)

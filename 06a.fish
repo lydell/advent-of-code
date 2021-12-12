@@ -1,7 +1,7 @@
 source (status dirname)/helpers.fish
 
 set num_days $argv[1]
-if test (count $num_days) = 0
+if not set -q num_days[1]
     set num_days 80
 end
 

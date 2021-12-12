@@ -1,4 +1,4 @@
-if test (count $argv) = 0
+if not set -q argv[1]
     set low_points (fish (status dirname)/09a.fish b)
     set num_low_points (count $low_points)
     set threads (parallel --number-of-threads)
