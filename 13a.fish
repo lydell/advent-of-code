@@ -3,8 +3,51 @@ if not set -q part[1]
     set part a
 end
 
-set max_x 0
-set max_y 0
+function fold -a axis n
+    switch $axis
+        case x
+            for coordinate in $argv[3..]
+                set split (string split ' ' $coordinate)
+                set x $split[1]
+                set y $split[2]
+                if test $x -lt $n
+                    echo $coordinate
+                else if test $x -gt $n
+                    set new_x (math 2 \* $n - $x)
+                    echo "$new_x $y"
+                end
+            end
+        case y
+            for coordinate in $argv[3..]
+                set split (string split ' ' $coordinate)
+                set x $split[1]
+                set y $split[2]
+                if test $y -lt $n
+                    echo $coordinate
+                else if test $y -gt $n
+                    set new_y (math 2 \* $n - $y)
+                    echo "$x $new_y"
+                end
+            end
+    end
+end
+
+function draw
+    set max_x (string join \n $argv | cut -d ' ' -f 1 | sort -nr)[1]
+    set max_y (string join \n $argv | cut -d ' ' -f 2 | sort -nr)[1]
+    for y in (seq 0 $max_y)
+        for x in (seq 0 $max_x)
+            if contains "$x $y" $argv
+                printf '#'
+            else
+                printf ' '
+            end
+        end
+        echo
+    end
+end
+
+set coordinates
 set folds
 set state coordinates
 while read -d , x y
@@ -14,67 +57,19 @@ while read -d , x y
     end
     switch $state
         case coordinates
-            set "$y"[(math $x + 1)] '#'
-            if test $x -gt $max_x
-                set max_x $x
-            end
-            if test $y -gt $max_y
-                set max_y $y
-            end
+            set -a coordinates "$x $y"
         case folds
-            set -a folds (string split '=' (string replace 'fold along ' '' $x))
-    end
-end
-
-for y in (seq 0 $max_y)
-    if not set -q "$y"[(math $max_x + 1)]
-        set "$y"[(math $max_x + 1)] ''
-    end
-end
-
-function fold -a axis n
-    switch $axis
-        case x
-            for y in (seq 0 $max_y)
-                for x in (seq (math $n + 1) $max_x)
-                    if test $$y[1][(math $x + 1)] = '#'
-                        set new_x (math 2 \* $n - $x)
-                        set "$y"[(math $new_x + 1)] '#'
-                    end
-                end
-                set -e "$y"[(math $n + 1)..]
-            end
-            set max_x (math $n - 1)
-        case y
-            for y in (seq (math $n + 1) $max_y)
-                set new_y (math 2 \* $n - $y)
-                for x in (seq 0 $max_x)
-                    if test $$y[1][(math $x + 1)] = '#'
-                        set "$new_y"[(math $x + 1)] '#'
-                    end
-                end
-            end
-            set max_y (math $n - 1)
+            set -a folds (string replace 'fold along ' '' $x)
     end
 end
 
 switch $part
     case a
-        fold $folds[1..2]
-        set count 0
-        for y in (seq 0 $max_y)
-            set count (math $count + (count (string match '#' $$y)))
-        end
-        echo $count
+        fold (string split '=' $folds[1]) $coordinates | sort -n | uniq | wc -l | string trim
 
     case b
-        while set -q folds[1]
-            set num (math (count $folds) / 2 - 1)
-            echo fold $folds[1..2] "($num left after this one)"
-            fold $folds[1..2]
-            set -e folds[1..2]
+        for item in $folds
+            set coordinates (fold (string split '=' $item) $coordinates | sort -n | uniq)
         end
-        for y in (seq 0 $max_y)
-            string join '' (string replace -r '^$' ' ' $$y)
-        end
+        draw $coordinates
 end
