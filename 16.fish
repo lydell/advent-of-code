@@ -6,61 +6,38 @@ function binary_to_decimal
     echo $d
 end
 
-function get_operator -a v
-    switch $v
-        case 0
-            echo sum
-        case 1
-            echo product
-        case 2
-            echo minimum
-        case 3
-            echo maximum
-        case 5
-            echo greater
-        case 6
-            echo less
-        case 7
-            echo equal
-    end
-end
-
 function eval -a operator
     set args $argv[2..]
     switch $operator
-        case sum
-            echo 1>&2 math (string join ' + ' $args)
+        case 0
             math (string join ' + ' $args)
-        case product
-            echo 1>&2 math (string join ' * ' $args)
+        case 1
             math (string join ' * ' $args)
-        case minimum
-            echo 1>&2 math 'min('(string join ', ' $args)')'
+        case 2
             set min $args[1]
             for v in $args[2..]
                 set min (math "min($min, $v)")
             end
             echo $min
-        case maximum
-            echo 1>&2 math 'max('(string join ', ' $args)')'
+        case 3
             set max $args[1]
             for v in $args[2..]
                 set max (math "max($max, $v)")
             end
             echo $max
-        case greater
+        case 5
             if test $args[1] -gt $args[2]
                 echo 1
             else
                 echo 0
             end
-        case less
+        case 6
             if test $args[1] -lt $args[2]
                 echo 1
             else
                 echo 0
             end
-        case equal
+        case 7
             if test $args[1] = $args[2]
                 echo 1
             else
@@ -108,10 +85,7 @@ for hex in $hex
     end
 end
 
-echo all_bits $all_bits
-
-# version | type | literal | target_i:$i:$operator:$values | num_packets:$n:$operator:$values
-set stack version
+set stack version # version | type | literal | target_i:$i:$operator:$values | num_packets:$n:$operator:$values
 set literal
 set last_value
 
@@ -124,14 +98,12 @@ while set -q stack[1]
         case version
             set bits $all_bits[$i..(math $i + 2)]
             set i (math $i + 3)
-            echo version $bits
-            set decimal (binary_to_decimal $bits)
-            set sum (math $sum + $decimal)
+            set sum (math $sum + (binary_to_decimal $bits))
             set stack[1] type
+
         case type
             set bits $all_bits[$i..(math $i + 2)]
             set i (math $i + 3)
-            echo type $bits
             set type (binary_to_decimal $bits)
             switch $type
                 case 4
@@ -139,7 +111,6 @@ while set -q stack[1]
                     set literal
                 case '*'
                     set length_type $all_bits[$i]
-                    echo length_type $length_type
                     set i (math $i + 1)
                     switch $length_type
                         case 0
@@ -150,46 +121,42 @@ while set -q stack[1]
                     set bits $all_bits[$i..(math $i + $length - 1)]
                     set i (math $i + $length)
                     set num (binary_to_decimal $bits)
-                    echo num $num
                     switch $length_type
                         case 0
-                            set stack version target_i:(math $i + $num):(get_operator $type) $stack[2..]
+                            set stack version target_i:(math $i + $num):$type $stack[2..]
                         case 1
-                            set stack version num_packets:$num:(get_operator $type) $stack[2..]
+                            set stack version num_packets:$num:$type $stack[2..]
                     end
             end
+
         case literal
             set bits $all_bits[$i..(math $i + 4)]
             set i (math $i + 5)
-            echo literal $bits
             set -a literal $bits[2..]
             switch $bits[1]
                 case 1 # continue
                 case 0
                     set last_value (binary_to_decimal $literal)
-                    echo literal_value $last_value
                     set -e stack[1]
             end
+
         case target_i
             set target_i $split[2]
             set operator $split[3]
             set values $split[4..] $last_value
-            echo target_i $target_i $operator $values / $i $last_value
             if test $i = $target_i
                 set last_value (eval $operator $values)
-                echo target_i eval $last_value
                 set -e stack[1]
             else
                 set stack version target_i:$target_i:$operator:(string join : $values) $stack[2..]
             end
+
         case num_packets
             set n $split[2]
             set operator $split[3]
             set values $split[4..] $last_value
-            echo num_packets $n $operator $values / $last_value
             if test $n = 1
                 set last_value (eval $operator $values)
-                echo num_packets eval $last_value
                 set -e stack[1]
             else
                 set stack version num_packets:(math $n - 1):$operator:(string join : $values) $stack[2..]
