@@ -1,3 +1,32 @@
+set part $argv[1]
+if set -q part[1]
+    set -e argv[1]
+else
+    set part a
+end
+
+set lines_file (status dirname)/18.lines.tmp
+
+switch $part
+    case a
+        set lines (cat)
+        set count (count $lines)
+
+    case b
+        if set -q argv[1]
+            set lines (cat $lines_file)
+            set count (count $lines)
+        else
+            set lines (cat)
+            set count (count $lines)
+            string join \n $lines >$lines_file
+            set threads (parallel --number-of-threads)
+            set max_args (math "ceil($count / $threads)")
+            seq $count | parallel --max-args=$max_args fish (status filename) $part | sort -nr | head -n 1
+            exit
+        end
+end
+
 function reduce
     set -l number $argv
     # echo 1>&2 addition $number
@@ -106,21 +135,30 @@ end
 # echo (reduce [ (parse [[[[4,3],4],4],[7,[[8,4],9]]]) (parse [1,1]) ])
 # exit
 
-set lines (cat)
-set count (count $lines)
+switch $part
+    case a
+        set sum (parse $lines[1])
+        for i in (seq 2 $count)
+            echo -n 1>&2 \r$i/$count
+            # echo ' ' $sum
+            # echo + (parse $lines[$i])
+            # echo \# [ $sum (parse $lines[$i]) ]
+            set sum (reduce [ $sum (parse $lines[$i]) ])
+            # echo = $sum
+            # echo
+            # exit
+        end
+        echo
+        echo sum $sum
+        echo magnitude (magnitude $sum)
 
-set sum (parse $lines[1])
-for i in (seq 2 $count)
-    echo -n 1>&2 \r$i/$count
-    # echo ' ' $sum
-    # echo + (parse $lines[$i])
-    # echo \# [ $sum (parse $lines[$i]) ]
-    set sum (reduce [ $sum (parse $lines[$i]) ])
-    # echo = $sum
-    # echo
-    # exit
+    case b
+        for i in $argv
+            set line (parse $lines[$i])
+            for j in (seq $count)
+                if test $j != $i
+                    magnitude (reduce [ $line (parse $lines[$j]) ])
+                end
+            end
+        end
 end
-
-echo
-echo sum $sum
-echo magnitude (magnitude $sum)
