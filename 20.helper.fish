@@ -19,5 +19,5 @@ for y in $argv
     for x in (seq $width)
         set -a line $algorithm[(math (get_area $x $y) + 1)]
     end
-    echo set -x $y$write $line
+    echo set $y$write $line
 end
