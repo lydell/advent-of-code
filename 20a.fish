@@ -1,3 +1,5 @@
+set vars_file (status dirname)/20.vars.fish.tmp
+
 set iterations $argv[1]
 if set -q argv[1]
     set -e argv[1]
@@ -44,25 +46,6 @@ function print_image
     end
 end
 
-function binary_to_decimal
-    set d 0
-    for b in $argv
-        set d (math $d \* 2 + $b)
-    end
-    echo $d
-end
-
-function get_area -a x y
-    set range $x..(math $x + 2)
-    set bits
-    for delta in (seq -1 1)
-        set name (math $y + $delta)$read
-        set -l line $background $background $$name $background $background
-        set -a bits $line[$range]
-    end
-    binary_to_decimal $bits
-end
-
 for i in (seq $iterations)
     set y_min (math $y_min - 1)
     set y_max (math $y_max + 1)
@@ -74,13 +57,11 @@ for i in (seq $iterations)
     set $y_max$read $$filler_name
     set (math $y_max + 1)$read $$filler_name
 
-    for y in (seq $y_min $y_max)
-        set line
-        for x in (seq $width)
-            set -a line $algorithm[(math (get_area $x $y) + 1)]
-        end
-        set $y$write $line
-    end
+    set --long | grep -E "^\d+$read\b|^(read|write|background|width|algorithm)\b" | string replace -r '^' 'set ' >$vars_file
+
+    set threads (parallel --number-of-threads)
+    set max_args (math "ceil(($y_max - $y_min + 1) / $threads)")
+    seq $y_min $y_max | parallel --max-args=$max_args fish (status dirname)/20.helper.fish | source
 
     switch $background
         case 0
@@ -94,7 +75,7 @@ for i in (seq $iterations)
     set write $tmp
 
     print_image
-    echo $i background $background
+    echo $i/$iterations
 end
 
 switch $background
