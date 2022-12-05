@@ -1,5 +1,5 @@
 // To run:
-// npx peggy 05.pegjs && node -p 'require("./05.js").parse(fs.readFileSync(process.stdin.fd, "utf8"), {part: process.argv[1]})' a < input/05.txt
+// npx peggy ab.pegjs && node -p 'require("./ab.js").parse(fs.readFileSync(process.stdin.fd, "utf8"), {part: process.argv[1]})' a < input.txt
 // Change "a" to "b" at the end for part 2.
 
 start
