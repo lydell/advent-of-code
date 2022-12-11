@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Advent of Code 2022 Day 10 Part 2</title>
+    <style>
+      html {
+        background-color: black;
+        color: white;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        font-family: monospace;
+      }
+
+      body {
+        margin: auto;
+      }
+
+      #controls {
+        display: flex;
+        gap: 0.5em;
+        align-items: center;
+        margin-bottom: 1em;
+      }
+
+      #controls input[type="number"] {
+        width: 4em;
+      }
+
+      #tv {
+        display: grid;
+        border: 2px solid white;
+        border-radius: 2px;
+        padding: 2px;
+        /* CRT effect taken from: https://codepen.io/z-/pen/XNQaym */
+        background: repeating-linear-gradient(
+          0deg,
+          #111 0px,
+          #111 1px,
+          transparent 2px,
+          transparent 5px
+        );
+        background-size: 100% 5px;
+        animation: lines 2s linear infinite;
+      }
+
+      #tv canvas {
+        grid-area: 1 / 1;
+      }
+
+      @keyframes lines {
+        0% {
+          background-position: 0px 0px;
+        }
+        100% {
+          background-position: 0px 25px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <button id="playButton" autofocus></button>
+      <button id="previousButton">⏮️</button>
+      <button id="nextButton">⏭️</button>
+      <button id="restartButton">↩️</button>
+      <span style="flex: 1"></span>
+      <label for="fpsInput">FPS:</label>
+      <input id="fpsInput" type="number" min="1" value="20" />
+    </div>
+
+    <div id="tv">
+      <canvas id="mainCanvas"></canvas>
+      <canvas id="debugCanvas"></canvas>
+    </div>
+
+    <pre id="debug"></pre>
+
+    <script src="./b.js"></script>
+
+    <script>
+      const WIDTH = 40;
+      const HEIGHT = 6;
+      const PIXEL_SIZE = Math.min(
+        20,
+        Math.floor(window.innerWidth / WIDTH - 1)
+      );
+      const SPRITE_WIDTH = 3;
+      const HALF_SPRITE_FLOOR = Math.floor(SPRITE_WIDTH / 2);
+      const HALF_SPRITE_CEIL = Math.ceil(SPRITE_WIDTH / 2);
+
+      const mainCtx = mainCanvas.getContext("2d");
+      const debugCtx = debugCanvas.getContext("2d");
+
+      mainCanvas.width = debugCanvas.width = WIDTH * PIXEL_SIZE;
+      mainCanvas.height = debugCanvas.height = HEIGHT * PIXEL_SIZE;
+
+      mainCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
+
+      let generator;
+      let playing = false;
+      let fps = fpsInput.valueAsNumber;
+      let c;
+      let x;
+
+      const updatePlayButtonText = () => {
+        playButton.textContent = playing ? "⏸" : "▶️";
+      };
+
+      const restart = () => {
+        generator = run();
+        c = 0;
+        x = 1;
+        mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+        drawDebug(0, 0, false);
+      };
+
+      const updateButtonsAtRestart = () => {
+        previousButton.disabled = true;
+        restartButton.disabled = true;
+        playButton.disabled = false;
+        updatePlayButtonText();
+        playButton.focus();
+      };
+
+      const updateUiWhenDone = () => {
+        playing = false;
+        playButton.disabled = true;
+        playButton.textContent = "⏯";
+        previousButton.disabled = false;
+        nextButton.disabled = true;
+        restartButton.disabled = false;
+        restartButton.focus();
+        clearDebug();
+      };
+
+      restartButton.onclick = () => {
+        restart();
+        updateButtonsAtRestart();
+      };
+
+      playButton.onclick = () => {
+        playing = !playing;
+        updatePlayButtonText();
+        previousButton.disabled = playing;
+        nextButton.disabled = playing;
+        restartButton.disabled = playing;
+        if (playing) {
+          tick();
+        } else {
+          previousButton.disabled = false;
+        }
+      };
+
+      previousButton.onclick = () => {
+        const end = c - 1;
+        restart();
+        if (end === 0) {
+          updateButtonsAtRestart();
+        } else {
+          nextButton.disabled = false;
+        }
+        for (let i = 0; i < end; i++) {
+          tick(true);
+        }
+      };
+
+      nextButton.onclick = () => {
+        tick(true);
+        previousButton.disabled = false;
+        restartButton.disabled = false;
+      };
+
+      fpsInput.oninput = () => {
+        if (Number.isFinite(fpsInput.valueAsNumber)) {
+          fps = Math.max(fpsInput.min, fpsInput.valueAsNumber);
+        }
+      };
+
+      function drawDebug(cx, cy, lit) {
+        clearDebug();
+        debugCtx.fillStyle = "rgba(255, 0, 0, 0.5)";
+        debugCtx.fillRect(
+          (x - HALF_SPRITE_FLOOR) * PIXEL_SIZE,
+          0,
+          PIXEL_SIZE * SPRITE_WIDTH,
+          debugCanvas.height
+        );
+        if (!lit) {
+          debugCtx.fillStyle = "rgba(255, 255, 255, 0.3)";
+          debugCtx.fillRect(
+            cx * PIXEL_SIZE,
+            cy * PIXEL_SIZE,
+            PIXEL_SIZE,
+            PIXEL_SIZE
+          );
+        }
+        debug.textContent = `
+cycle: ${c}
+coordinate: ${cx},${cy}
+x: ${x}
+sprite: ${Array.from(
+          { length: SPRITE_WIDTH },
+          (_, i) => x - HALF_SPRITE_FLOOR + i
+        ).join(",")}
+`.trim();
+      }
+
+      function clearDebug() {
+        debugCtx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
+      }
+
+      function draw(cx, cy, lit) {
+        mainCtx.fillRect(
+          cx * PIXEL_SIZE,
+          cy * PIXEL_SIZE,
+          PIXEL_SIZE,
+          PIXEL_SIZE
+        );
+      }
+
+      const tick = (forceNext = false) => {
+        if (!playing && !forceNext) return;
+        const { done, value } = generator.next();
+        if (done) {
+          updateUiWhenDone();
+        } else {
+          const cx = c % WIDTH;
+          const cy = Math.floor(c / WIDTH);
+          const lit = cx >= x - HALF_SPRITE_FLOOR && cx < x + HALF_SPRITE_CEIL;
+          c++;
+          if (lit) {
+            draw(cx, cy);
+          }
+          drawDebug(cx, cy, lit);
+          if (value !== undefined) {
+            x += value;
+          }
+          setTimeout(tick, 1000 / fps);
+        }
+      };
+
+      restart();
+      updateButtonsAtRestart();
+    </script>
+  </body>
+</html>
