@@ -1,0 +1,10 @@
+{
+    "targets": {
+        "Day15": {
+            "inputs": [
+                "AB.elm"
+            ],
+            "output": "ab.js"
+        }
+    }
+}
