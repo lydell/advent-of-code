@@ -1,0 +1,22 @@
+{
+    "targets": {
+        "Day14": {
+            "inputs": [
+                "14/AB.elm"
+            ],
+            "output": "14/ab.js"
+        },
+        "Day15": {
+            "inputs": [
+                "15/AB.elm"
+            ],
+            "output": "15/ab.js"
+        },
+        "Day17": {
+            "inputs": [
+                "17/AB.elm"
+            ],
+            "output": "17/ab.js"
+        }
+    }
+}

@@ -1,6 +1,0 @@
-{
-  "private": true,
-  "dependencies": {
-    "elm-watch": "1.1.1"
-  }
-}
