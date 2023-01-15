@@ -1,0 +1,38 @@
+/* Colors and font copied from https://adventofcode.com/ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: #0f0f23;
+  color: #cccccc;
+  font-family: "Source Code Pro", monospace;
+  font-size: 24px;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+}
+
+a {
+  color: #009900;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #99ff99;
+}
+
+/* This can be overriden via inline styles on the root element of your `view`. */
+body > :first-child {
+  padding: 50px;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
