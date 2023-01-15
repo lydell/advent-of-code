@@ -1,7 +1,7 @@
 module Day20 exposing (..)
 
 import Day20Input exposing (input)
-import Regex exposing (HowMany(AtMost), Match, Regex)
+import Regex exposing (HowMany(..), Match, Regex)
 
 
 output : () -> ( String, String )

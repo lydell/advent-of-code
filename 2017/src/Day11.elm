@@ -1,7 +1,7 @@
 module Day11 exposing (..)
 
 import Day11Input exposing (input)
-import Hexagon exposing (Hex(IntCubeHex))
+import Hexagon exposing (Hex(..))
 
 
 output : () -> ( String, String )

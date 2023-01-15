@@ -2,7 +2,7 @@ module Day7 exposing (..)
 
 import Day7Input exposing (input)
 import List.Extra
-import Regex exposing (HowMany(AtMost), Match, Regex)
+import Regex exposing (HowMany(..), Match, Regex)
 import Set
 
 

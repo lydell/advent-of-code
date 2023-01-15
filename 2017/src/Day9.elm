@@ -1,7 +1,7 @@
 module Day9 exposing (..)
 
 import Day9Input exposing (input)
-import Parser exposing ((|.), (|=), Count(Exactly), Error, Parser, end, ignore, keep, lazy, oneOf, oneOrMore, repeat, source, succeed, symbol, zeroOrMore)
+import Parser exposing ((|.), (|=), Count(..), Error, Parser, end, ignore, keep, lazy, oneOf, oneOrMore, repeat, source, succeed, symbol, zeroOrMore)
 import Parser.LanguageKit exposing (record)
 
 
