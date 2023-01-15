@@ -17,6 +17,12 @@
                 "17/AB.elm"
             ],
             "output": "17/ab.js"
+        },
+        "Day22": {
+            "inputs": [
+                "22/AB.elm"
+            ],
+            "output": "22/ab.js"
         }
     }
 }
