@@ -1,0 +1,15 @@
+{
+  "private": true,
+  "scripts": {
+    "install-elm": "elm-package install",
+    "test": "elm-test",
+    "build": "elm-make src/Runner.elm --output runner.js",
+    "day": "node run.js",
+    "format": "elm-format src tests"
+  },
+  "dependencies": {
+    "elm": "^0.18.0",
+    "elm-format": "^0.7.0-exp",
+    "elm-test": "^0.18.10"
+  }
+}
