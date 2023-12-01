@@ -1,4 +1,4 @@
-fish a.fish (cat $argv[1] \
+cat \
     | string replace -a oneight 18 \
     | string replace -a threeight 38 \
     | string replace -a fiveight 58 \
@@ -16,4 +16,4 @@ fish a.fish (cat $argv[1] \
     | string replace -a seven 7 \
     | string replace -a eight 8 \
     | string replace -a nine 9 \
-    | psub)
+    | fish a.fish
