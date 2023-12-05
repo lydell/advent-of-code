@@ -1,5 +1,4 @@
-seeds = "79 14 55 13".split(" ").map(Number)
-function run(n) {
+console.log(Math.min(..."79 14 55 13".split(" ").map(Number).map(n => {
 
 if (false) {}
 else if (n >= 98 && n < 98 + 2) { n = 50 + n - 98 }
@@ -32,7 +31,4 @@ else if (n >= 0 && n < 0 + 69) { n = 1 + n - 0 }
 if (false) {}
 else if (n >= 56 && n < 56 + 37) { n = 60 + n - 56 }
 else if (n >= 93 && n < 93 + 4) { n = 56 + n - 93 }
-return n
-}
-console.log(Math.min(...seeds.map(run)))
-
+return n})))
