@@ -1,4 +1,4 @@
-console.log(Math.min(..."79 14 55 13".split(" ").map(Number).map(n => {
+console.log(Math.min(...[79,14,55,13].map(n => {
 
 if (false) {}
 else if (n >= 98 && n < 98 + 2) { n = 50 + n - 98 }
