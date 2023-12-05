@@ -1,5 +1,4 @@
-seeds = Array.from("79 14 55 13".matchAll(/(\d+) (\d+)/g), m => [Number(m[1]), Number(m[1]) + Number(m[2]) - 1])
-function run(ranges) {
+ranges = Array.from("79 14 55 13".matchAll(/(\d+) (\d+)/g), m => [Number(m[1]), Number(m[1]) + Number(m[2]) - 1])
 
 for (range of ranges) if (false) {}
 else if (range[0] >= 98 && range[0] < 98 + 2) { range[0] = 50 + range[0] - 98; if (range[1] < 98 + 2) { range[1] = 50 + range[1] - 98 } else { ranges.push([98 + 2, range[1]]); range[1] = 50 + 2 - 1 } }
@@ -32,7 +31,4 @@ else if (range[0] >= 0 && range[0] < 0 + 69) { range[0] = 1 + range[0] - 0; if (
 for (range of ranges) if (false) {}
 else if (range[0] >= 56 && range[0] < 56 + 37) { range[0] = 60 + range[0] - 56; if (range[1] < 56 + 37) { range[1] = 60 + range[1] - 56 } else { ranges.push([56 + 37, range[1]]); range[1] = 60 + 37 - 1 } }
 else if (range[0] >= 93 && range[0] < 93 + 4) { range[0] = 56 + range[0] - 93; if (range[1] < 93 + 4) { range[1] = 56 + range[1] - 93 } else { ranges.push([93 + 4, range[1]]); range[1] = 56 + 4 - 1 } }
-return ranges
-}
-console.log(Math.min(...run(seeds).map(range => range[0])))
-
+console.log(Math.min(...ranges.map(range => range[0])))
