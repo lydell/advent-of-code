@@ -1,4 +1,4 @@
-ranges = Array.from("79 14 55 13".matchAll(/(\d+) (\d+)/g), m => [Number(m[1]), Number(m[1]) + Number(m[2]) - 1])
+ranges = [[79, 79 + 14], [55, 55 + 13],]
 
 for (range of ranges) if (false) {}
 else if (range[0] >= 98 && range[0] < 98 + 2) { range[0] = 50 + range[0] - 98; if (range[1] < 98 + 2) { range[1] = 50 + range[1] - 98 } else { ranges.push([98 + 2, range[1]]); range[1] = 50 + 2 - 1 } }
