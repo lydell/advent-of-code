@@ -1,29 +1,14 @@
-const allCurrent = Object.keys(map).filter(key => key.endsWith("A"))
+const allFactors = new Map()
 
-// This verifies that each *A loops, and only passes one *Z on its way
-// for (const start of allCurrent) {
-//     const visited = new Map()
-//     const z = new Set()
-//     let current = start, i = 0, key = ""
-//     while (true) {
-//         const sideN = i % lr.length
-//         const side = lr[sideN]
-//         key = current + sideN
-//         if (visited.has(key)) break
-//         visited.set(key, i)
-//         if (current.endsWith("Z")) z.add(current)
-//         current = map[current][side]
-//         i++
-//     }
-//     console.log(start, i, visited.get(key), i - visited.get(key), z)
-// }
-
-const zs = []
-
-for (const start of allCurrent) {
+for (const start of Object.keys(map).filter(key => key.endsWith("A"))) {
     let current = start, i = 0
     const z = []
-    while (z.length < 10) {
+    // While developing, I had `< 10` here (plus the commented out `console.log`
+    // below), to check if there seems to be the same amount of steps to each Z
+    // every time. Seems to be so. Because of that, the first time all of the Zs
+    // are visited at the same time, is when then step number is divisible by all
+    // the periods (and the step number is as small as possible).
+    while (z.length < 1) {
         if (current.endsWith("Z")) {
             const previous = z[z.length - 1] ?? [start, 0, 0]
             z.push([current, i, i - previous[1]])
@@ -31,11 +16,20 @@ for (const start of allCurrent) {
         current = map[current][lr[i % lr.length]]
         i++
     }
-    console.log(start, z)
-    if (new Set(z.map(([_, __, diff]) => diff)).size !== 1) {
-        throw new Error("Not all Zs have the same distance")
+    // console.log(start, z)
+    for (const [factor, count] of countEach(primeFactors(z[0][2]))) {
+        allFactors.set(factor, Math.max(allFactors.get(factor) ?? 0, count))
     }
-    zs.push(z[0][2])
+}
+
+console.log(Array.from(allFactors, ([factor, count]) => factor ** count).reduce((a, b) => a * b, 1))
+
+function countEach(arr) {
+    const grouped = new Map()
+    for (const item of arr) {
+        grouped.set(item, (grouped.get(item) ?? 0) + 1)
+    }
+    return grouped
 }
 
 // https://stackoverflow.com/a/53643340
@@ -53,5 +47,3 @@ function primeFactors(n) {
   }
   return factors;
 }
-
-console.log(zs.map(z => [z, primeFactors(z)]))
