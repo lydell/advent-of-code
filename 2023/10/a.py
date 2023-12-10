@@ -73,3 +73,6 @@ while True:
         break
 
 print(steps)
+
+# I later realized the solution is just half the length of the loop:
+# No need to simulate two runners until they meet.
