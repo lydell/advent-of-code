@@ -20,16 +20,16 @@ ax = -1
 ay = -1
 
 for y, row in enumerate(map):
-    ay += 1
     if y in empty_rows:
-        ay += expansion - 1
+        ay += expansion
         continue
+    ay += 1
     ax = -1
     for x, cell in enumerate(row):
-        ax += 1
         if x in empty_columns:
-            ax += expansion - 1
+            ax += expansion
             continue
+        ax += 1
         if cell == '#':
             galaxies.append((ay, ax))
 
