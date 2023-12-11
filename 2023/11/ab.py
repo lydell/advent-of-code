@@ -12,16 +12,8 @@ map = [list(line.strip()) for line in sys.stdin]
 height = len(map)
 width = len(map[0])
 
-empty_columns = set()
-empty_rows = set()
-
-for y, row in enumerate(map):
-    if all(cell == '.' for cell in row):
-        empty_rows.add(y)
-
-for x in range(width):
-    if all(row[x] == '.' for row in map):
-        empty_columns.add(x)
+empty_columns = {x for x in range(width) if all(row[x] == '.' for row in map)}
+empty_rows = {y for y, row in enumerate(map) if all(cell == '.' for cell in row)}
 
 galaxies = []
 ax = -1
