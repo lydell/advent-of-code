@@ -33,7 +33,4 @@ for y, row in enumerate(map):
         if cell == '#':
             galaxies.append((ay, ax))
 
-def taxicab_distance(y1, x1, y2, x2):
-    return abs(y1 - y2) + abs(x1 - x2)
-
-print(sum(taxicab_distance(y, x, y2, x2) for i, (y, x) in enumerate(galaxies[:-1]) for (y2, x2) in galaxies[i + 1:]))
+print(sum(abs(y - y2) + abs(x - x2) for i, (y, x) in enumerate(galaxies[:-1]) for (y2, x2) in galaxies[i + 1:]))
