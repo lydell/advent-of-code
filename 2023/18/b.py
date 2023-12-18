@@ -46,6 +46,9 @@ def shoelace(coordinates):
 # _middle_ of each square. Which means that we have already counted half of the
 # area of most perimeter squares. For the corners, some of them are 1/4 inside
 # the shoelace area, and some are 3/4, which evens out. This explains why we
-# divide by 2. The +1 I don’t really get, but people try to explain it here:
-# https://www.reddit.com/r/adventofcode/comments/18l8mao/2023_day_18_intuition_for_why_spoiler_alone/
+# divide by 2. Finally, if there are exactly the same amount of corners angled
+# either way, the line never closes to a polygon. There must be exactly 4 more
+# of one type of corner to come back around (4 because we’re working with 90
+# degree angles). Each of those 4 corners contribute 1/4 of a square to the
+# total area, which is why we add 1.
 print(shoelace(coordinates) + perimeter // 2 + 1)
