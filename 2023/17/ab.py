@@ -12,7 +12,9 @@ def dijkstra(current, get_neighbors):
 
     while True:
         visited.add(current)
-        for node_cost, node in get_neighbors(visited, current):
+        for node_cost, node in get_neighbors(current):
+            if node in visited:
+                continue
             cost = current_cost + node_cost
             if node in table:
                 shortest_distance, _ = table[node]
@@ -54,7 +56,7 @@ class Node:
     def __lt__(self, other):
         return self.streak < other.streak
 
-def get_neighbors(visited, node: Node):
+def get_neighbors(node: Node):
     nodes = []
     match node.direction:
         case "N":
@@ -77,7 +79,7 @@ def get_neighbors(visited, node: Node):
                 nodes = [Node(node.y - 1, node.x, "N", 1), Node(node.y + 1, node.x, "S", 1)]
             if node.streak < max_streak:
                 nodes.append(Node(node.y, node.x - 1, "W", node.streak + 1))
-    return [(maze[node.y][node.x], node) for node in nodes if 0 <= node.y < len(maze) and 0 <= node.x < len(maze[0]) and node not in visited]
+    return [(maze[node.y][node.x], node) for node in nodes if 0 <= node.y < len(maze) and 0 <= node.x < len(maze[0])]
 
 def run_min(current: Node):
     table = dijkstra(current, get_neighbors)
