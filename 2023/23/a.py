@@ -42,7 +42,7 @@ width = len(map[0]) - 1
 @dataclass
 class Node:
     coord: (int, int)
-    children: list[(int, (int, int))]
+    children: list[(list[(int, int)], (int, int))]
 
 @dataclass
 class Explorer:
@@ -50,14 +50,15 @@ class Explorer:
     x: int
     prev_coord: (int, int)
     node: Node
-    distance: int
+    path: list[(int, int)]
     mode: Literal['bidirectional', 'forward', 'backward']
 
 graph = {}
 
 start_node = Node((0, 1), [])
-start_explorer = Explorer(1, 1, start_node.coord, start_node, 0, 'bidirectional')
+start_explorer = Explorer(1, 1, start_node.coord, start_node, [], 'bidirectional')
 queue = [start_explorer]
+# visited = set()
 
 graph[start_node.coord] = start_node
 
@@ -65,6 +66,7 @@ while queue:
     explorer = queue.pop(0)
     y = explorer.y
     x = explorer.x
+    # visited.add((y, x))
 
     match map[y][x]:
         case '.':
@@ -78,6 +80,10 @@ while queue:
             continue
             # raise Exception(f'Unknown character: {char}')
 
+    if explorer.mode == 'backward':
+        print('skip backward')
+        continue
+
     neighbors = [
         (ny, nx)
         for (ny, nx)
@@ -86,41 +92,63 @@ while queue:
     ]
 
     if len(neighbors) == 1:
-        queue.insert(0, Explorer(neighbors[0][0], neighbors[0][1], (y, x), explorer.node, explorer.distance + 1, explorer.mode))
+        queue.insert(0, Explorer(neighbors[0][0], neighbors[0][1], (y, x), explorer.node, explorer.path + [(y, x)], explorer.mode))
     else:
-        map[explorer.prev_coord[0]][explorer.prev_coord[1]] = '-'
+        # map[explorer.prev_coord[0]][explorer.prev_coord[1]] = '-'
         new_node = graph.get((y, x), Node((y, x), []))
-        cost = -explorer.distance
+        path = explorer.path + [(y, x)]
         print('add', explorer.mode)
         match explorer.mode:
             case 'bidirectional':
-                explorer.node.children.append((cost, (y, x)))
-                new_node.children.append((cost, explorer.node.coord))
+                # if (path, (y, x)) not in explorer.node.children:
+                #     explorer.node.children.append((path, (y, x)))
+                # if (path, explorer.node.coord) not in new_node.children:
+                #     new_node.children.append((path, explorer.node.coord))
+                raise Exception('bidirectional')
             case 'forward':
-                explorer.node.children.append((cost, (y, x)))
+                if (path, (y, x)) not in explorer.node.children:
+                    explorer.node.children.append((path, (y, x)))
             case 'backward':
-                new_node.children.append((cost, explorer.node.coord))
+                # if (path, explorer.node.coord) not in new_node.children:
+                #     new_node.children.append((path, explorer.node.coord))
+                raise Exception('backward')
         if (y, x) not in graph:
             graph[new_node.coord] = new_node
             for (ny, nx) in neighbors:
-                queue.append(Explorer(ny, nx, new_node.coord, new_node, 0, 'bidirectional'))
+                queue.append(Explorer(ny, nx, new_node.coord, new_node, [], 'bidirectional'))
 
 def get_neighbors(coord):
-    return graph[coord].children
+    neigh = [(-len(sub_path), sub_coord) for sub_path, sub_coord in graph[coord].children]
+    print(coord, neigh)
+    return neigh
 
 table = dijkstra(start_node.coord, get_neighbors)
 
 print(table[height, width - 1])
-print(graph)
 
 current = (height, width - 1)
 path = []
 while current != start_node.coord:
     path.append(current)
-    current = table[current][1]
-path.reverse()
+    cost, next = table[current]
+    for sub_path, child_coord in graph[next].children:
+        if child_coord == current:
+            path += sub_path
+    current = next
 
-for i, (y, x) in enumerate(path):
-    map[y][x] = str(i)
+id = 0
+for coord, node in graph.items():
+    for sub_path, child_coord in node.children:
+        char = chr(ord('a') + id % 26)
+        for (y, x) in sub_path:
+            map[y][x] = char
+        # if char == 'o':
+        #     print('N', sub_path)
+        #     print('\n'.join(''.join(row) for row in map))
+        #     exit()
+        id += 1
 
-print('\n'.join(''.join(row) for row in map))
+for (y, x) in (path):
+    map[y][x] = map[y][x].upper()
+
+print('\n'.join(''.join([' ' if c == '#' else c for c in row]) for row in map))
