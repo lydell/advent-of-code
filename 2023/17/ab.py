@@ -7,33 +7,25 @@ def dijkstra(current, get_neighbors):
     table = {}
     visited = set()
     queue = []
-    unqueued = set()
-    current_cost = 0
 
-    while True:
+    heapq.heappush(queue, (0, current))
+
+    while queue:
+        current_cost, current = heapq.heappop(queue)
+        if current in visited:
+            continue
         visited.add(current)
         for node_cost, node in get_neighbors(current):
             if node in visited:
                 continue
             cost = current_cost + node_cost
             if node in table:
-                shortest_distance, _ = table[node]
-                if cost < shortest_distance:
+                if cost <= table[node][0]:
                     table[node] = (cost, current)
-                    unqueued.add((shortest_distance, node))
-                    heapq.heappush(queue, (cost, node))
             else:
                 table[node] = (cost, current)
-                heapq.heappush(queue, (cost, node))
-        if not queue:
-            return table
-        next = heapq.heappop(queue)
-        while next in unqueued:
-            unqueued.remove(next)
-            if not queue:
-                return table
-            next = heapq.heappop(queue)
-        current_cost, current = next
+            heapq.heappush(queue, (cost, node))
+    return table
 
 if len(sys.argv) != 3:
     print("You must pass the minimum and maximum streak")
