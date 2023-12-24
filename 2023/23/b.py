@@ -17,13 +17,13 @@ class Explorer:
     x: int
     prev_coord: (int, int)
     node: Node
-    path: list[(int, int)]
+    path: int
     mode: Literal['bidirectional', 'forward', 'backward']
 
 graph = {}
 
 start_node = Node((0, 1), [])
-start_explorer = Explorer(1, 1, start_node.coord, start_node, [], 'bidirectional')
+start_explorer = Explorer(1, 1, start_node.coord, start_node, 0, 'bidirectional')
 queue = [start_explorer]
 
 graph[start_node.coord] = start_node
@@ -51,50 +51,49 @@ while queue:
     ]
 
     if len(neighbors) == 1:
-        queue.insert(0, Explorer(neighbors[0][0], neighbors[0][1], (y, x), explorer.node, explorer.path + [(y, x)], explorer.mode))
+        queue.insert(0, Explorer(neighbors[0][0], neighbors[0][1], (y, x), explorer.node, explorer.path + 1, explorer.mode))
     else:
         new_node = graph.get((y, x), Node((y, x), []))
-        path = explorer.path + [(y, x)]
+        path = explorer.path + 1
         match explorer.mode:
             case 'bidirectional':
                 raise Exception('bidirectional')
             case 'forward':
                 if (path, (y, x)) not in explorer.node.children:
                     explorer.node.children.append((path, (y, x)))
+                if (path, explorer.node.coord) not in new_node.children:
+                    new_node.children.append((path, explorer.node.coord))
             case 'backward':
                 if (path, explorer.node.coord) not in new_node.children:
                     new_node.children.append((path, explorer.node.coord))
+                if (path, (y, x)) not in explorer.node.children:
+                    explorer.node.children.append((path, (y, x)))
         if (y, x) not in graph:
             graph[new_node.coord] = new_node
             for (ny, nx) in neighbors:
-                queue.append(Explorer(ny, nx, new_node.coord, new_node, [], 'bidirectional'))
+                queue.append(Explorer(ny, nx, new_node.coord, new_node, 0, 'bidirectional'))
 
-longest = []
+longest = 0
 
-queue = [([], start_node.coord, set())]
+end = (height, width - 1)
 
-while queue:
-    path, coord, visited = queue.pop(0)
-    if coord == (height, width - 1):
-        if len(path) > len(longest):
+visited = {start_node.coord}
+
+# I originally tried to do this with a BFS, but it was too slow.
+# I then learned on reddit that with a BFS you can mutate `visited`
+# which is way faster.
+def dfs(coord, path):
+    global longest
+    if coord == end:
+        if path > longest:
             longest = path
-        continue
-    for sub_path, child_coord in graph[coord].children:
-        if child_coord not in visited:
-            queue.append((path + sub_path, child_coord, visited | {coord}))
+    else:
+        visited.add(coord)
+        for sub_path, child_coord in graph[coord].children:
+            if child_coord not in visited:
+                dfs(child_coord, path + sub_path)
+        visited.remove(coord)
 
-id = 0
-for coord, node in graph.items():
-    for sub_path, child_coord in node.children:
-        char = chr(ord('a') + id % 26)
-        for (y, x) in sub_path:
-            map[y][x] = char
-        id += 1
+dfs(start_node.coord, 0)
 
-for (y, x) in longest:
-    map[y][x] = map[y][x].upper()
-
-print('\n'.join(''.join([' ' if c == '#' else c for c in row]) for row in map))
-
-print()
-print(len(longest))
+print(longest)
