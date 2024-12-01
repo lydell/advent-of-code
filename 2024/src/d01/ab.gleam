@@ -1,21 +1,23 @@
 import gleam/int
 import gleam/io
-import gleam/iterator
 import gleam/list
+import gleam/result
 import gleam/string
-import stdin.{stdin}
+import line_parser
 
 pub fn main() {
   let #(left_list, right_list) =
-    stdin()
-    |> iterator.to_list
-    |> list.map(fn(line) {
-      case string.trim(line) |> string.split(on: "   ") |> list.map(int.parse) {
-        [Ok(left), Ok(right)] -> #(left, right)
-        other -> {
-          io.debug(other)
-          panic
+    line_parser.parse_stdin(fn(line) {
+      case string.split(line, on: "   ") {
+        [left, right] -> {
+          use left_int <- result.try(line_parser.parse_int("Left", left))
+          use right_int <- result.map(line_parser.parse_int("Right", right))
+          #(left_int, right_int)
         }
+        other ->
+          Error(
+            "Expected 2 items but got " <> int.to_string(list.length(other)),
+          )
       }
     })
     |> list.unzip
