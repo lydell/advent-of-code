@@ -28,19 +28,15 @@ pub fn main() {
       list.sort(right_list, by: int.compare),
       fn(a, b) { int.absolute_value(a - b) },
     )
-    |> sum
+    |> int.sum
 
   let part2 =
     left_list
     |> list.map(fn(left) {
       left * list.count(right_list, fn(right) { right == left })
     })
-    |> sum
+    |> int.sum
 
   io.println("Part 1: " <> int.to_string(part1))
   io.println("Part 2: " <> int.to_string(part2))
-}
-
-fn sum(list: List(Int)) -> Int {
-  list.fold(list, 0, int.add)
 }
