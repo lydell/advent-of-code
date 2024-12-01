@@ -40,5 +40,5 @@ pub fn main() {
 }
 
 fn sum(list: List(Int)) -> Int {
-  list.fold(list, 0, fn(a, b) { a + b })
+  list.fold(list, 0, int.add)
 }
