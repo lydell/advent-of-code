@@ -8,28 +8,42 @@ import gleam/string
 import line_parser
 
 pub fn main() {
-  line_parser.parse_stdin(fn(line) {
-    line_parser.parse_general(
-      string.split(line, on: " "),
-      "Item",
-      function.identity,
-      line_parser.parse_int("Item", _),
-    )
-    |> result.then(fn(report) {
-      case report {
-        [] -> Error("Got empty report")
-        [single] ->
-          Error("Got report with just one level: " <> int.to_string(single))
-        [first, ..rest] -> Ok(#(first, rest))
-      }
+  let reports =
+    line_parser.parse_stdin(fn(line) {
+      line_parser.parse_general(
+        string.split(line, on: " "),
+        "Item",
+        function.identity,
+        line_parser.parse_int("Item", _),
+      )
+      |> result.then(fn(report) {
+        case report {
+          [] -> Error("Got empty report")
+          [single] ->
+            Error("Got report with just one level: " <> int.to_string(single))
+          [first, ..rest] -> Ok(#(first, rest))
+        }
+      })
     })
-  })
-  |> list.filter(fn(report) {
-    let #(first, rest) = report
-    is_safe_dampened(first, rest)
-  })
-  |> list.length
-  |> io.debug
+
+  let part1 =
+    reports
+    |> list.filter(fn(report) {
+      let #(first, rest) = report
+      is_safe(NotDeterminedYet, first, rest)
+    })
+    |> list.length
+
+  let part2 =
+    reports
+    |> list.filter(fn(report) {
+      let #(first, rest) = report
+      is_safe_dampened(first, rest)
+    })
+    |> list.length
+
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println("Part 2: " <> int.to_string(part2))
 }
 
 type Direction {
