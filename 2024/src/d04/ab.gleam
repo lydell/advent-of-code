@@ -1,5 +1,6 @@
 import gleam/dict
 import gleam/function
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/string
@@ -37,29 +38,61 @@ pub fn main() {
     |> list.flatten
     |> dict.from_list
 
-  grid
-  |> dict.fold(0, fn(sum, coordinate, char) {
-    case char {
-      X -> {
-        let found =
-          coordinate_to_searches(coordinate)
-          |> list.filter(fn(search) {
-            search
-            |> list.all(fn(search_triple) {
-              let #(search_x, search_y, search_char) = search_triple
-              case dict.get(grid, #(search_x, search_y)) {
-                Ok(grid_char) if grid_char == search_char -> True
-                _ -> False
-              }
+  let part1 =
+    grid
+    |> dict.fold(0, fn(sum, coordinate, char) {
+      case char {
+        X -> {
+          let found =
+            coordinate_to_searches(coordinate)
+            |> list.filter(fn(search) {
+              search
+              |> list.all(fn(search_triple) {
+                let #(search_x, search_y, search_char) = search_triple
+                case dict.get(grid, #(search_x, search_y)) {
+                  Ok(grid_char) if grid_char == search_char -> True
+                  _ -> False
+                }
+              })
             })
-          })
-          |> list.length
-        sum + found
+            |> list.length
+          sum + found
+        }
+        _ -> sum
       }
-      _ -> sum
-    }
-  })
-  |> io.debug
+    })
+
+  let part2 =
+    grid
+    |> dict.fold(0, fn(sum, coordinate, char) {
+      case char {
+        A -> {
+          let #(x, y) = coordinate
+          let top_left = #(x - 1, y - 1)
+          let top_right = #(x + 1, y - 1)
+          let bottom_left = #(x - 1, y + 1)
+          let bottom_right = #(x + 1, y + 1)
+          let lookup = dict.get(grid, _)
+          let check = fn(coordinate1, coordinate2) {
+            case lookup(coordinate1), lookup(coordinate2) {
+              Ok(M), Ok(S) -> True
+              Ok(S), Ok(M) -> True
+              _, _ -> False
+            }
+          }
+          let is_xmas =
+            check(top_left, bottom_right) && check(top_right, bottom_left)
+          case is_xmas {
+            True -> sum + 1
+            False -> sum
+          }
+        }
+        _ -> sum
+      }
+    })
+
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println("Part 2: " <> int.to_string(part2))
 }
 
 fn coordinate_to_searches(
