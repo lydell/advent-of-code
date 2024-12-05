@@ -9,6 +9,14 @@ import gleam/string
 import line_parser
 import stdin.{stdin}
 
+type Page {
+  Page(index: Int, page_number: Int)
+}
+
+type Rule {
+  Rule(left: Int, right: Int)
+}
+
 pub fn main() {
   let #(rules, updates) = case parse() {
     Error(error) -> {
@@ -30,7 +38,7 @@ pub fn main() {
   let part2 =
     invalid_updates
     |> list.map(fn(update) {
-      list.sort(update, fn(a, b) { order_update(a, b, rules) })
+      list.sort(update, fn(a, b) { order_pages(a, b, rules) })
       |> get_middle_page_number
     })
     |> int.sum
@@ -39,7 +47,7 @@ pub fn main() {
   io.println("Part 2: " <> int.to_string(part2))
 }
 
-fn parse() -> Result(#(List(#(Int, Int)), List(List(#(Int, Int)))), String) {
+fn parse() -> Result(#(List(Rule), List(List(Page))), String) {
   use #(rules_section, updates_section) <- result.try(
     stdin()
     |> iterator.to_list
@@ -58,7 +66,7 @@ fn parse() -> Result(#(List(#(Int, Int)), List(List(#(Int, Int)))), String) {
           [left, right] -> {
             use left_int <- result.try(line_parser.parse_int("Left", left))
             use right_int <- result.map(line_parser.parse_int("Right", right))
-            #(left_int, right_int)
+            Rule(left_int, right_int)
           }
           _ -> Error("Unexpected rule: " <> line)
         }
@@ -79,7 +87,7 @@ fn parse() -> Result(#(List(#(Int, Int)), List(List(#(Int, Int)))), String) {
           line_parser.parse_int("Page number", _),
         )
         |> result.map(list.index_map(_, fn(page_number, index) {
-          #(index, page_number)
+          Page(index, page_number)
         }))
       },
     ),
@@ -88,35 +96,29 @@ fn parse() -> Result(#(List(#(Int, Int)), List(List(#(Int, Int)))), String) {
   #(rules, updates)
 }
 
-fn is_valid_update(update: List(#(Int, Int)), rules: List(#(Int, Int))) -> Bool {
+fn is_valid_update(update: List(Page), rules: List(Rule)) -> Bool {
   rules
   |> list.all(fn(rule) {
-    let #(left, right) = rule
     {
-      use left_index <- result.try(
-        list.find(update, fn(item) { item.1 == left }),
+      use left <- result.try(
+        list.find(update, fn(item) { item.page_number == rule.left }),
       )
-      use right_index <- result.map(
-        list.find(update, fn(item) { item.1 == right }),
+      use right <- result.map(
+        list.find(update, fn(item) { item.page_number == rule.right }),
       )
-      left_index.0 < right_index.0
+      left.index < right.index
     }
     // Rule is not needed by this update.
     |> result.unwrap(True)
   })
 }
 
-fn order_update(
-  a: #(Int, Int),
-  b: #(Int, Int),
-  rules: List(#(Int, Int)),
-) -> Order {
+fn order_pages(a: Page, b: Page, rules: List(Rule)) -> Order {
   list.find_map(rules, fn(rule) {
-    let #(left, right) = rule
-    case a.1 == left && b.1 == right {
+    case a.page_number == rule.left && b.page_number == rule.right {
       True -> Ok(order.Lt)
       False ->
-        case b.1 == left && a.1 == right {
+        case b.page_number == rule.left && a.page_number == rule.right {
           True -> Ok(order.Gt)
           False -> Error(Nil)
         }
@@ -126,10 +128,10 @@ fn order_update(
   |> result.unwrap(order.Eq)
 }
 
-fn get_middle_page_number(update: List(#(Int, Int))) -> Int {
+fn get_middle_page_number(update: List(Page)) -> Int {
   let middle = list.length(update) / 2
   case list.drop(update, middle) {
     [] -> panic as "Middle not found!"
-    [#(_, page_number), ..] -> page_number
+    [page, ..] -> page.page_number
   }
 }
