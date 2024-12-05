@@ -1,13 +1,11 @@
 import gleam/function
 import gleam/int
 import gleam/io
-import gleam/iterator
 import gleam/list
 import gleam/order.{type Order}
 import gleam/result
 import gleam/string
 import line_parser
-import stdin.{stdin}
 
 type Page {
   Page(index: Int, page_number: Int)
@@ -48,17 +46,13 @@ pub fn main() {
 }
 
 fn parse() -> Result(#(List(Rule), List(List(Page))), String) {
-  use #(rules_section, updates_section) <- result.try(
-    stdin()
-    |> iterator.to_list
-    |> string.join("")
-    |> string.split_once("\n\n")
-    |> result.replace_error("Input does not contain a blank line."),
-  )
+  let #(rules_section, updates_section) =
+    line_parser.parse_stdin(Ok)
+    |> list.split_while(fn(line) { line != "" })
 
   use rules <- result.try(
     line_parser.parse_general(
-      string.split(string.trim(rules_section), "\n"),
+      rules_section,
       "Rule",
       function.identity,
       fn(line) {
@@ -74,24 +68,23 @@ fn parse() -> Result(#(List(Rule), List(List(Page))), String) {
     ),
   )
 
-  use updates <- result.map(
-    line_parser.parse_general(
-      string.split(string.trim(updates_section), "\n"),
-      "Update",
-      function.identity,
-      fn(line) {
-        line_parser.parse_general(
-          string.split(line, ","),
-          "Rule",
-          function.identity,
-          line_parser.parse_int("Page number", _),
-        )
-        |> result.map(list.index_map(_, fn(page_number, index) {
-          Page(index, page_number)
-        }))
-      },
-    ),
-  )
+  use updates <- result.map(line_parser.parse_general(
+    // Drop the blank line.
+    list.drop(updates_section, 1),
+    "Update",
+    function.identity,
+    fn(line) {
+      line_parser.parse_general(
+        string.split(line, ","),
+        "Rule",
+        function.identity,
+        line_parser.parse_int("Page number", _),
+      )
+      |> result.map(list.index_map(_, fn(page_number, index) {
+        Page(index, page_number)
+      }))
+    },
+  ))
 
   #(rules, updates)
 }
