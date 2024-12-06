@@ -19,8 +19,14 @@ type Tile {
   Empty
 }
 
+type Position =
+  #(Int, Int)
+
+type Grid =
+  Dict(Position, Tile)
+
 pub fn main() {
-  let lines =
+  let lines: List(List(InputChar)) =
     line_parser.parse_stdin(fn(line) {
       line_parser.parse_general(
         string.to_graphemes(line),
@@ -37,7 +43,7 @@ pub fn main() {
       )
     })
 
-  let #(grid, starting_position) =
+  let #(grid, starting_position): #(Grid, Position) =
     lines
     |> list.index_fold(#(dict.new(), #(0, 0)), fn(outer_acc, row, y) {
       row
@@ -86,9 +92,9 @@ pub fn main() {
 
 type Walk {
   Walk(
-    position: #(Int, Int),
+    position: Position,
     direction: Direction,
-    visited: Set(#(#(Int, Int), Direction)),
+    visited: Set(#(Position, Direction)),
   )
 }
 
@@ -104,7 +110,7 @@ type Where {
   OutOfBounds
 }
 
-fn step(walk: Walk, grid: Dict(#(Int, Int), Tile)) -> #(Walk, Where) {
+fn step(walk: Walk, grid: Grid) -> #(Walk, Where) {
   let next_position = get_next_position(walk)
   case set.contains(walk.visited, #(next_position, walk.direction)) {
     True -> #(walk, InBounds)
@@ -135,7 +141,7 @@ fn step(walk: Walk, grid: Dict(#(Int, Int), Tile)) -> #(Walk, Where) {
   }
 }
 
-fn get_next_position(walk: Walk) -> #(Int, Int) {
+fn get_next_position(walk: Walk) -> Position {
   let #(x, y) = walk.position
   case walk.direction {
     Down -> #(x, y + 1)
@@ -154,7 +160,7 @@ fn turn_right(direction: Direction) -> Direction {
   }
 }
 
-fn draw(grid: Dict(#(Int, Int), Tile), visited: Set(#(Int, Int))) -> String {
+fn draw(grid: Grid, visited: Set(Position)) -> String {
   let keys = dict.keys(grid)
   let xs = list.map(keys, pair.first)
   let ys = list.map(keys, pair.second)
