@@ -5,6 +5,7 @@ import gleam/io
 import gleam/list
 import gleam/option
 import gleam/order
+import gleam/otp/task
 import gleam/pair
 import gleam/set.{type Set}
 import gleam/string
@@ -85,7 +86,8 @@ pub fn main() {
 
   let part2 =
     visited_positions
-    |> set.filter(fn(position) {
+    |> set.to_list
+    |> pmap(fn(position) {
       case position == starting_position {
         True -> False
         False -> {
@@ -97,9 +99,15 @@ pub fn main() {
         }
       }
     })
-    |> set.size
+    |> list.count(function.identity)
 
   io.println("Part 2: " <> int.to_string(part2))
+}
+
+fn pmap(xs: List(x), with fun: fn(x) -> y) -> List(y) {
+  xs
+  |> list.map(fn(x) { task.async(fn() { fun(x) }) })
+  |> list.map(task.await_forever)
 }
 
 type Walk {
