@@ -54,23 +54,45 @@ pub fn main() {
     Walk(
       position: starting_position,
       direction: Up,
-      visited: set.from_list([starting_position]),
+      visited: set.from_list([#(starting_position, Up)]),
     )
 
-  let final_walk = step(initial_walk, grid)
+  let assert #(final_walk, OutOfBounds) = step(initial_walk, grid)
 
-  io.println(draw(grid, final_walk.visited))
+  let visited_positions = set.map(final_walk.visited, pair.first)
+
+  io.println(draw(grid, visited_positions))
 
   io.debug(final_walk.position)
   io.debug(final_walk.direction)
 
-  final_walk.visited
+  visited_positions
+  |> set.size
+  |> io.debug
+
+  visited_positions
+  |> set.filter(fn(position) {
+    case position == starting_position {
+      True -> False
+      False -> {
+        let modified_grid = dict.insert(grid, position, Obstruction)
+        case step(initial_walk, modified_grid) |> pair.second {
+          InBounds -> True
+          OutOfBounds -> False
+        }
+      }
+    }
+  })
   |> set.size
   |> io.debug
 }
 
 type Walk {
-  Walk(position: #(Int, Int), direction: Direction, visited: Set(#(Int, Int)))
+  Walk(
+    position: #(Int, Int),
+    direction: Direction,
+    visited: Set(#(#(Int, Int), Direction)),
+  )
 }
 
 type Direction {
@@ -80,21 +102,39 @@ type Direction {
   Down
 }
 
-fn step(walk: Walk, grid: Dict(#(Int, Int), Tile)) -> Walk {
+type Where {
+  InBounds
+  OutOfBounds
+}
+
+fn step(walk: Walk, grid: Dict(#(Int, Int), Tile)) -> #(Walk, Where) {
   let next_position = get_next_position(walk)
-  case dict.get(grid, next_position) {
-    Error(Nil) -> Walk(..walk, position: next_position)
-    Ok(Empty) ->
-      step(
-        Walk(
-          ..walk,
-          position: next_position,
-          visited: set.insert(walk.visited, next_position),
-        ),
-        grid,
-      )
-    Ok(Obstruction) ->
-      step(Walk(..walk, direction: turn_right(walk.direction)), grid)
+  case set.contains(walk.visited, #(next_position, walk.direction)) {
+    True -> #(walk, InBounds)
+    False ->
+      case dict.get(grid, next_position) {
+        Error(Nil) -> #(Walk(..walk, position: next_position), OutOfBounds)
+        Ok(Empty) ->
+          step(
+            Walk(
+              ..walk,
+              position: next_position,
+              visited: set.insert(walk.visited, #(next_position, walk.direction)),
+            ),
+            grid,
+          )
+        Ok(Obstruction) -> {
+          let new_direction = turn_right(walk.direction)
+          step(
+            Walk(
+              ..walk,
+              direction: new_direction,
+              visited: set.insert(walk.visited, #(walk.position, new_direction)),
+            ),
+            grid,
+          )
+        }
+      }
   }
 }
 
