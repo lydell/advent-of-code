@@ -63,28 +63,25 @@ pub fn main() {
 
   io.println(draw(grid, visited_positions))
 
-  io.debug(final_walk.position)
-  io.debug(final_walk.direction)
+  io.println("Part 1: " <> int.to_string(set.size(visited_positions)))
 
-  visited_positions
-  |> set.size
-  |> io.debug
-
-  visited_positions
-  |> set.filter(fn(position) {
-    case position == starting_position {
-      True -> False
-      False -> {
-        let modified_grid = dict.insert(grid, position, Obstruction)
-        case step(initial_walk, modified_grid) |> pair.second {
-          InBounds -> True
-          OutOfBounds -> False
+  let part2 =
+    visited_positions
+    |> set.filter(fn(position) {
+      case position == starting_position {
+        True -> False
+        False -> {
+          let modified_grid = dict.insert(grid, position, Obstruction)
+          case step(initial_walk, modified_grid) |> pair.second {
+            InBounds -> True
+            OutOfBounds -> False
+          }
         }
       }
-    }
-  })
-  |> set.size
-  |> io.debug
+    })
+    |> set.size
+
+  io.println("Part 2: " <> int.to_string(part2))
 }
 
 type Walk {
