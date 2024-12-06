@@ -187,19 +187,23 @@ fn draw(grid: Grid, visited: Dict(Position, Set(Direction))) -> String {
       case dict.get(visited, #(x, y)) {
         Ok(directions) ->
           case directions |> set.to_list |> list.sort(compare_direction) {
-            [Down] -> "v"
-            [Left] -> "<"
-            [Right] -> ">"
-            [Up] -> "^"
-            [Down, Up] -> "|"
-            [Left, Right] -> "-"
-            _ -> "+"
+            [Down] -> "⬇️"
+            [Left] -> "⬅️"
+            [Right] -> "➡️"
+            [Up] -> "⬆️"
+            [Down, Up] -> "↕️"
+            [Left, Right] -> "↔️"
+            [Left, Up] -> "↖️"
+            [Down, Left] -> "↙️"
+            [Right, Up] -> "↗️"
+            [Down, Right] -> "↘️"
+            _ -> "🔄"
           }
         Error(Nil) ->
           case dict.get(grid, #(x, y)) {
-            Error(Nil) -> "?"
-            Ok(Empty) -> "."
-            Ok(Obstruction) -> "#"
+            Error(Nil) -> "❓"
+            Ok(Empty) -> "  "
+            Ok(Obstruction) -> "🟥"
           }
       }
     })
