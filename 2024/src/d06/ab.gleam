@@ -3,6 +3,8 @@ import gleam/function
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/option
+import gleam/order
 import gleam/pair
 import gleam/set.{type Set}
 import gleam/string
@@ -65,9 +67,19 @@ pub fn main() {
 
   let assert #(final_walk, OutOfBounds) = step(initial_walk, grid)
 
-  let visited_positions = set.map(final_walk.visited, pair.first)
+  let visited_for_drawing =
+    final_walk.visited
+    |> set.fold(dict.new(), fn(acc, item) {
+      let #(position, direction) = item
+      dict.upsert(acc, position, fn(previous) {
+        previous
+        |> option.unwrap(set.new())
+        |> set.insert(direction)
+      })
+    })
+  io.println(draw(grid, visited_for_drawing))
 
-  io.println(draw(grid, visited_positions))
+  let visited_positions = set.map(final_walk.visited, pair.first)
 
   io.println("Part 1: " <> int.to_string(set.size(visited_positions)))
 
@@ -160,7 +172,7 @@ fn turn_right(direction: Direction) -> Direction {
   }
 }
 
-fn draw(grid: Grid, visited: Set(Position)) -> String {
+fn draw(grid: Grid, visited: Dict(Position, Set(Direction))) -> String {
   let keys = dict.keys(grid)
   let xs = list.map(keys, pair.first)
   let ys = list.map(keys, pair.second)
@@ -172,9 +184,18 @@ fn draw(grid: Grid, visited: Set(Position)) -> String {
   |> list.map(fn(y) {
     list.range(min_x, max_x)
     |> list.map(fn(x) {
-      case set.contains(visited, #(x, y)) {
-        True -> "X"
-        False ->
+      case dict.get(visited, #(x, y)) {
+        Ok(directions) ->
+          case directions |> set.to_list |> list.sort(compare_direction) {
+            [Down] -> "v"
+            [Left] -> "<"
+            [Right] -> ">"
+            [Up] -> "^"
+            [Down, Up] -> "|"
+            [Left, Right] -> "-"
+            _ -> "+"
+          }
+        Error(Nil) ->
           case dict.get(grid, #(x, y)) {
             Error(Nil) -> "?"
             Ok(Empty) -> "."
@@ -185,4 +206,17 @@ fn draw(grid: Grid, visited: Set(Position)) -> String {
     |> string.join("")
   })
   |> string.join("\n")
+}
+
+fn compare_direction(a: Direction, b: Direction) -> order.Order {
+  int.compare(direction_to_int(a), direction_to_int(b))
+}
+
+fn direction_to_int(direction: Direction) -> Int {
+  case direction {
+    Down -> 0
+    Left -> 1
+    Right -> 2
+    Up -> 3
+  }
 }
