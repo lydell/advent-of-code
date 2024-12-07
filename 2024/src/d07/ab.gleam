@@ -55,7 +55,7 @@ pub fn main() {
               False ->
                 "🚨  Does not evaluate to the result! Evaluated: "
                 <> int.to_string(evaluated)
-              True -> "✅  Is fixable:  "
+              True -> "✅  Is  fixable: "
             }
             prefix <> int.to_string(equation.result) <> ": " <> equation_string
           }
