@@ -115,16 +115,14 @@ fn try_to_fix_equation(
         True -> Ok([])
       }
     [first, ..rest] -> {
-      {
-        case equation.result >= first {
-          True ->
-            try_to_fix_equation(
-              Equation(result: equation.result - first, operands: rest),
-              level + 1,
-            )
-            |> result.map(fn(operators) { [Add, ..operators] })
-          False -> Error(Nil)
-        }
+      case equation.result >= first {
+        True ->
+          try_to_fix_equation(
+            Equation(result: equation.result - first, operands: rest),
+            level + 1,
+          )
+          |> result.map(fn(operators) { [Add, ..operators] })
+        False -> Error(Nil)
       }
       |> result.lazy_or(fn() {
         case int.modulo(equation.result, first) {
