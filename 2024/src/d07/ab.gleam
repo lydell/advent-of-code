@@ -36,7 +36,7 @@ pub fn main() {
 
   let results =
     input
-    |> list.map(fn(equation) { #(equation, is_fixable_equation(equation, 0)) })
+    |> list.map(fn(equation) { #(equation, try_to_fix_equation(equation, 0)) })
 
   results
   |> list.index_map(fn(tuple, index) {
@@ -44,24 +44,20 @@ pub fn main() {
     int.to_string(index)
     <> ": "
     <> case result {
-      Error(Nil) -> "Not fixable: " <> print_equation(equation)
+      Error(Nil) -> "❌  Not fixable: " <> print_equation(equation)
       Ok(operators) ->
         case evaluate(equation, operators) {
           Error(error) ->
-            "Eval failed! " <> error <> ": " <> print_equation(equation)
+            "🚨  Eval failed! " <> error <> ": " <> print_equation(equation)
           Ok(tuple) -> {
             let #(evaluated, equation_string) = tuple
-            let eq = case evaluated == equation.result {
-              False -> "!="
-              True -> "=="
+            let prefix = case evaluated == equation.result {
+              False ->
+                "🚨  Does not evaluate to the result! Evaluated: "
+                <> int.to_string(evaluated)
+              True -> "✅  Is fixable:  "
             }
-            int.to_string(equation.result)
-            <> " "
-            <> eq
-            <> " "
-            <> int.to_string(evaluated)
-            <> " : "
-            <> equation_string
+            prefix <> int.to_string(equation.result) <> ": " <> equation_string
           }
         }
     }
@@ -69,17 +65,34 @@ pub fn main() {
   |> string.join("\n")
   |> io.println
 
-  results
-  |> list.map(fn(tuple) {
-    let #(equation, result) = tuple
-    case result {
-      Error(_) -> 0
-      Ok(_) -> equation.result
-    }
-  })
-  |> int.sum
-  |> io.debug
-  Nil
+  let part1 =
+    results
+    |> list.map(fn(tuple) {
+      let #(equation, result) = tuple
+      case result {
+        Error(_) -> 0
+        Ok(operators) ->
+          case list.contains(operators, Concat) {
+            True -> 0
+            False -> equation.result
+          }
+      }
+    })
+    |> int.sum
+
+  let part2 =
+    results
+    |> list.map(fn(tuple) {
+      let #(equation, result) = tuple
+      case result {
+        Error(_) -> 0
+        Ok(_) -> equation.result
+      }
+    })
+    |> int.sum
+
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println("Part 2: " <> int.to_string(part2))
 }
 
 type Operator {
@@ -88,8 +101,9 @@ type Operator {
   Concat
 }
 
-fn is_fixable_equation(
+fn try_to_fix_equation(
   equation: Equation,
+  // Only used for the commented out debug print below.
   level: Int,
 ) -> Result(List(Operator), Nil) {
   // io.println(string.repeat("  ", level) <> string.inspect(equation))
@@ -104,7 +118,7 @@ fn is_fixable_equation(
       {
         case equation.result >= first {
           True ->
-            is_fixable_equation(
+            try_to_fix_equation(
               Equation(result: equation.result - first, operands: rest),
               level + 1,
             )
@@ -115,7 +129,7 @@ fn is_fixable_equation(
       |> result.lazy_or(fn() {
         case int.modulo(equation.result, first) {
           Ok(0) ->
-            is_fixable_equation(
+            try_to_fix_equation(
               Equation(result: equation.result / first, operands: rest),
               level + 1,
             )
@@ -137,10 +151,11 @@ fn is_fixable_equation(
                 string.length(first_string),
               ))
             {
-              Error(Nil) -> panic as "concat int parse failure"
+              Error(Nil) ->
+                panic as "try_to_fix_equation: failure to parse un-concatenated number"
               Ok(value) -> value
             }
-            is_fixable_equation(
+            try_to_fix_equation(
               Equation(result: new_result, operands: rest),
               level + 1,
             )
@@ -179,7 +194,8 @@ fn evaluate(
                 let new_sum = case
                   int.parse(int.to_string(sum) <> int.to_string(operand))
                 {
-                  Error(Nil) -> panic as "Not just digits"
+                  Error(Nil) ->
+                    panic as "evaluate: failure to parse concatenated number"
                   Ok(value) -> value
                 }
                 #(new_sum, equation_string <> " || " <> int.to_string(operand))
