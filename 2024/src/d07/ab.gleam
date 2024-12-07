@@ -15,16 +15,10 @@ pub fn main() {
     line_parser.parse_stdin(fn(line) {
       use items <- result.try(
         line_parser.parse_general(
-          string.split(line, " "),
+          string.split(string.replace(line, ":", ""), " "),
           "Item",
           function.identity,
-          fn(item) {
-            let adjusted = case string.ends_with(item, ":") {
-              True -> string.drop_end(item, 1)
-              False -> item
-            }
-            line_parser.parse_int("Number", adjusted)
-          },
+          line_parser.parse_int("Number", _),
         ),
       )
       case items {
