@@ -1,4 +1,5 @@
 import gleam/dict
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option
@@ -8,6 +9,10 @@ import gleam/string
 import line_parser
 
 pub fn main() {
+  run(get_antinode_positions)
+}
+
+pub fn run(get_antinode_positions) {
   let lines =
     line_parser.parse_stdin(fn(line) { Ok(string.to_graphemes(line)) })
 
@@ -41,20 +46,14 @@ pub fn main() {
   let antinode_positions =
     grouped_by_antenna
     |> dict.fold(set.new(), fn(acc, _, positions) {
-      let new_positions =
-        get_antinode_positions(positions)
-        |> set.filter(fn(position) {
-          let #(x, y) = position
-          x >= 0 && x < grid_width && y >= 0 && y < grid_height
-        })
-      set.union(acc, new_positions)
+      set.union(acc, get_antinode_positions(positions, grid_width, grid_height))
     })
 
   io.println(draw(grid_width, grid_height, grid, correct, antinode_positions))
-  io.debug(set.size(antinode_positions))
+  io.println(int.to_string(set.size(antinode_positions)))
 }
 
-fn get_antinode_positions(positions) {
+fn get_antinode_positions(positions, grid_width, grid_height) {
   case positions {
     [] | [_] -> set.new()
     [#(x, y), ..rest] ->
@@ -65,7 +64,11 @@ fn get_antinode_positions(positions) {
         [#(x + dx, y + dy), #(x2 - dx, y2 - dy)]
       })
       |> set.from_list
-      |> set.union(get_antinode_positions(rest))
+      |> set.filter(fn(position) {
+        let #(x, y) = position
+        x >= 0 && x < grid_width && y >= 0 && y < grid_height
+      })
+      |> set.union(get_antinode_positions(rest, grid_width, grid_height))
   }
 }
 
