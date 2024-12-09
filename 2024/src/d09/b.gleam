@@ -44,11 +44,10 @@ pub fn main() {
       }
     })
 
-  io.println(draw(disk))
-
   let compacted = compact(disk, list.reverse(empty_spots), end)
 
-  io.println(draw(compacted))
+  io.println(draw_truncated(disk))
+  io.println(draw_truncated(compacted))
 
   compacted
   |> dict.to_list
@@ -59,9 +58,8 @@ pub fn main() {
     |> list.map(fn(index2) { { index + index2 } * file.id })
   })
   |> int.sum
-  |> io.debug
-
-  Nil
+  |> int.to_string
+  |> io.println
 }
 
 fn compact(
@@ -120,16 +118,28 @@ fn find(
   }
 }
 
+const max_draw_size = 100
+
+fn draw_truncated(disk: Dict(Int, File)) -> String {
+  let str = draw(disk)
+  let length = string.length(str)
+  let truncated = case length <= max_draw_size {
+    True -> str
+    False -> string.slice(str, 0, max_draw_size) <> "…"
+  }
+  truncated <> " (" <> int.to_string(length) <> ")"
+}
+
 fn draw(disk: Dict(Int, File)) -> String {
   disk
   |> dict.to_list
   |> list.sort(fn(a, b) { int.compare(a.0, b.0) })
   |> list.fold(#("", 0), fn(acc, item) {
     let #(index, file) = item
-    let #(str, foo) = acc
+    let #(str, last_end) = acc
     #(
       str
-        <> string.repeat(".", index - foo)
+        <> string.repeat(".", index - last_end)
         <> string.repeat(int.to_string(file.id), file.size),
       index + file.size,
     )

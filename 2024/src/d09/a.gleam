@@ -18,18 +18,18 @@ pub fn main() {
     })
     |> list.flatten
     |> list.index_fold(#(dict.new(), 0), fn(acc, size, index) {
-      let #(acc, pointer) = acc
+      let #(disk, pointer) = acc
       case int.modulo(index, 2) {
         Ok(0) -> {
           let id = index / 2
           let new_acc =
             list.range(0, size - 1)
-            |> list.fold(acc, fn(acc2, index2) {
+            |> list.fold(disk, fn(acc2, index2) {
               dict.insert(acc2, pointer + index2, id)
             })
           #(new_acc, pointer + size)
         }
-        _ -> #(acc, pointer + size)
+        _ -> #(disk, pointer + size)
       }
     })
 
@@ -37,7 +37,8 @@ pub fn main() {
   |> dict.to_list
   |> list.map(fn(item) { item.0 * item.1 })
   |> int.sum
-  |> io.debug
+  |> int.to_string
+  |> io.println
 }
 
 fn compact(disk, start, end) {
