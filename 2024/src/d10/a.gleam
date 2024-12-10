@@ -8,6 +8,10 @@ import gleam/string
 import line_parser
 
 pub fn main() {
+  run(fn(position, grid) { set.size(score_trail(position, 0, grid)) })
+}
+
+pub fn run(score_trail) {
   let grid =
     line_parser.parse_stdin(fn(line) {
       line_parser.parse_general(
@@ -29,9 +33,10 @@ pub fn main() {
     |> list.map(fn(tuple) { tuple.0 })
 
   trail_heads
-  |> list.map(fn(position) { set.size(score_trail(position, 0, grid)) })
+  |> list.map(score_trail(_, grid))
   |> int.sum
-  |> io.debug
+  |> int.to_string
+  |> io.println
 }
 
 fn score_trail(position, number, grid) {
