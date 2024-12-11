@@ -20,11 +20,14 @@ pub fn main() {
     |> list.flatten
     |> list.fold(dict.new(), fn(acc, number) { add(acc, number, 1) })
 
+  // Change to 25 to solve part 1. I kept the original part 1 solution
+  // since it is fun to compare the naive solution with the optimized one.
   list.range(1, 75)
   |> list.fold(stones, fn(acc, _) { cycle(acc) })
   |> dict.values
   |> int.sum
-  |> io.debug
+  |> int.to_string
+  |> io.println
 }
 
 fn add(acc, number, count) {

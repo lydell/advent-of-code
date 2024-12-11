@@ -20,7 +20,8 @@ pub fn main() {
   list.range(1, 25)
   |> list.fold(stones, fn(acc, _) { cycle(acc) })
   |> list.length
-  |> io.debug
+  |> int.to_string
+  |> io.println
 }
 
 fn cycle(stones) {
