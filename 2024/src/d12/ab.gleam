@@ -56,17 +56,22 @@ pub fn main() {
       }
     })
 
-  regions
-  |> list.map(fn(region) {
-    let sides = count_sides(region.perimeters)
-    #(region.char, sides, set.size(region.plots) * sides)
-  })
-  |> io.debug
-  |> list.map(fn(triple) { triple.2 })
-  |> int.sum
-  |> io.debug
+  let part1 =
+    regions
+    |> list.map(fn(region) {
+      set.size(region.plots) * list.length(region.perimeters)
+    })
+    |> int.sum
 
-  Nil
+  let part2 =
+    regions
+    |> list.map(fn(region) {
+      set.size(region.plots) * count_sides(region.perimeters)
+    })
+    |> int.sum
+
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println("Part 2: " <> int.to_string(part2))
 }
 
 fn find_region(
@@ -90,20 +95,13 @@ fn find_region(
         fn(new_acc, tuple) {
           let #(side, new_position) = tuple
           case dict.get(grid, new_position) {
-            Error(Nil) ->
+            Ok(new_char) if new_char == char ->
+              find_region(grid, new_position, char, new_acc)
+            _ ->
               Region(
                 ..new_acc,
                 perimeters: [#(side, position), ..new_acc.perimeters],
               )
-            Ok(new_char) ->
-              case new_char == char {
-                False ->
-                  Region(
-                    ..new_acc,
-                    perimeters: [#(side, position), ..new_acc.perimeters],
-                  )
-                True -> find_region(grid, new_position, char, new_acc)
-              }
           }
         },
       )
