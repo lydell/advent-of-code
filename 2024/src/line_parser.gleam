@@ -27,6 +27,30 @@ pub fn parse_stdin(parser: fn(String) -> Result(a, String)) -> List(a) {
   }
 }
 
+pub fn parse_stdin_empty_line_delimited_chunks(
+  parser: fn(List(String)) -> Result(a, String),
+) {
+  let result =
+    stdin()
+    |> iterator.to_list
+    |> list.map(fn(line) {
+      case string.ends_with(line, "\n") {
+        True -> string.drop_end(line, 1)
+        False -> line
+      }
+    })
+    |> list.chunk(string.is_empty)
+    |> list.filter(fn(chunk) { !list.all(chunk, string.is_empty) })
+    |> parse_general("Chunk", string.join(_, "\n"), parser)
+  case result {
+    Error(error) -> {
+      io.println_error(error)
+      panic
+    }
+    Ok(list) -> list
+  }
+}
+
 // Ported from 2020/src/LineParser.elm.
 pub fn parse_general(
   input: List(a),
