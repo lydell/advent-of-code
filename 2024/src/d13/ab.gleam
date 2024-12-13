@@ -5,6 +5,8 @@ import gleam/regex
 import gleam/string
 import line_parser
 
+const add_part2 = 10_000_000_000_000
+
 type Machine {
   Machine(a_x: Int, a_y: Int, b_x: Int, b_y: Int, target_x: Int, target_y: Int)
 }
@@ -12,39 +14,40 @@ type Machine {
 pub fn main() {
   let assert Ok(re) = regex.from_string("\\d+")
 
-  line_parser.parse_stdin_empty_line_delimited_chunks(fn(chunk) {
-    let matches =
-      chunk
-      |> string.join("\n")
-      |> regex.scan(re, _)
-      |> list.map(fn(match) { int.parse(match.content) })
-    case matches {
-      [Ok(a_x), Ok(a_y), Ok(b_x), Ok(b_y), Ok(target_x), Ok(target_y)] ->
-        Ok(Machine(
-          a_x,
-          a_y,
-          b_x,
-          b_y,
-          10_000_000_000_000 + target_x,
-          10_000_000_000_000 + target_y,
-        ))
-      _ -> Error("Could not find 6 integers in chunk")
-    }
-  })
-  |> list.map(fn(machine) {
-    case play_machine(machine) {
-      Error(Nil) -> 0
-      Ok(presses) -> cost(presses)
-    }
-  })
-  |> int.sum
-  |> io.debug
+  let machines =
+    line_parser.parse_stdin_empty_line_delimited_chunks(fn(chunk) {
+      let matches =
+        chunk
+        |> string.join("\n")
+        |> regex.scan(re, _)
+        |> list.map(fn(match) { int.parse(match.content) })
+      case matches {
+        [Ok(a_x), Ok(a_y), Ok(b_x), Ok(b_y), Ok(target_x), Ok(target_y)] ->
+          Ok(Machine(a_x, a_y, b_x, b_y, target_x, target_y))
+        _ -> Error("Could not find 6 integers in chunk")
+      }
+    })
 
-  Nil
-}
+  let part1 =
+    machines
+    |> list.map(play_machine)
+    |> int.sum
 
-type Presses {
-  Presses(a: Int, b: Int)
+  let part2 =
+    machines
+    |> list.map(fn(machine) {
+      play_machine(
+        Machine(
+          ..machine,
+          target_x: machine.target_x + add_part2,
+          target_y: machine.target_y + add_part2,
+        ),
+      )
+    })
+    |> int.sum
+
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println("Part 2: " <> int.to_string(part2))
 }
 
 // Button A: x1, y1
@@ -70,7 +73,7 @@ type Presses {
 // b*y2*x1 - y1*b*x2 = y*x1 - y1*x
 // b(y2*x1 - y1*x2) = y*x1 - y1*x
 // b = (y*x1 - y1*x) / (y2*x1 - y1*x2)
-fn play_machine(machine: Machine) -> Result(Presses, Nil) {
+fn play_machine(machine: Machine) -> Int {
   let x1 = machine.a_x
   let y1 = machine.a_y
   let x2 = machine.b_x
@@ -82,11 +85,7 @@ fn play_machine(machine: Machine) -> Result(Presses, Nil) {
   let x_ = a * x1 + b * x2
   let y_ = a * y1 + b * y2
   case x_ == x && y_ == y {
-    False -> Error(Nil)
-    True -> Ok(Presses(a:, b:))
+    False -> 0
+    True -> a * 3 + b
   }
-}
-
-fn cost(presses: Presses) -> Int {
-  presses.a * 3 + presses.b
 }

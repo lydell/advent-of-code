@@ -34,15 +34,16 @@ pub fn main() {
     }
   })
   |> int.sum
-  |> io.debug
-
-  Nil
+  |> int.to_string
+  |> io.println
 }
 
 type Presses {
   Presses(a: Int, b: Int)
 }
 
+// This is the naive, brute force solution.
+// ab.gleam solves both parts, but it was fun keeping the naive part 1 solution as well.
 fn play_machine(machine: Machine) -> List(Presses) {
   list.range(0, int.min(machine.target_x / machine.a_x, 100))
   |> list.filter_map(fn(a) {
