@@ -85,7 +85,7 @@ fn grid_from_robots(robots: Dict(#(Int, Int), List(#(Int, Int)))) -> Grid {
 // I don’t seem to find anything in the first million seconds though.
 fn search_for_christmas_tree(grid: Grid, i: Int) -> #(Grid, Int) {
   io.print(int.to_string(i) <> "\r")
-  case has_line(grid) {
+  case has_top_of_tree(grid) {
     True -> #(grid, i)
     False -> search_for_christmas_tree(cycle(grid), i + 1)
   }
@@ -108,6 +108,31 @@ fn cycle(grid: Grid) -> Grid {
       })
     })
   Grid(..grid, robots: new_robots)
+}
+
+fn has_top_of_tree(grid: Grid) -> Bool {
+  list.range(0, grid.max_y)
+  |> list.any(fn(y) {
+    list.range(0, grid.max_x)
+    |> list.any(fn(x) { is_top_of_tree(grid, x, y) })
+  })
+}
+
+fn is_top_of_tree(grid: Grid, x: Int, y: Int) -> Bool {
+  let positions = [
+    //    #
+    #(x, y),
+    //   # #
+    #(x - 1, y + 1),
+    #(x + 1, y + 1),
+    //  #   #
+    #(x - 2, y + 2),
+    #(x + 2, y + 2),
+    // #     #
+    #(x - 3, y + 3),
+    #(x + 3, y + 3),
+  ]
+  list.all(positions, dict.has_key(grid.robots, _))
 }
 
 fn has_line(grid: Grid) -> Bool {
@@ -150,23 +175,28 @@ fn draw(grid: Grid) -> String {
       case dict.get(grid.robots, #(x, y)) {
         Error(Nil) -> "."
         Ok(robots) -> {
-          let length = list.length(robots)
-          let s = case length < 10 {
-            True -> int.to_string(length)
-            False -> "+"
-          }
-          case int.compare(x, grid.max_x / 2) {
-            order.Eq -> "^"
-            order.Lt ->
-              case dict.has_key(grid.robots, #(grid.max_x - x, y)) {
-                False -> s
-                True -> "<"
+          case is_top_of_tree(grid, x, y) {
+            True -> "#"
+            False -> {
+              let length = list.length(robots)
+              let s = case length < 10 {
+                True -> int.to_string(length)
+                False -> "+"
               }
-            order.Gt ->
-              case dict.has_key(grid.robots, #(grid.max_x - x, y)) {
-                False -> s
-                True -> ">"
+              case int.compare(x, grid.max_x / 2) {
+                order.Eq -> "^"
+                order.Lt ->
+                  case dict.has_key(grid.robots, #(grid.max_x - x, y)) {
+                    False -> s
+                    True -> "<"
+                  }
+                order.Gt ->
+                  case dict.has_key(grid.robots, #(grid.max_x - x, y)) {
+                    False -> s
+                    True -> ">"
+                  }
               }
+            }
           }
         }
       }
