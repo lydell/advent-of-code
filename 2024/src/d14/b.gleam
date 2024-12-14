@@ -13,6 +13,32 @@ type Grid {
 }
 
 pub fn main() {
+  let test_grid =
+    "
+....#....
+...#.#...
+..#...#..
+.#.....#.
+#.......#
+  "
+    |> string.trim()
+    |> string.split("\n")
+    |> list.index_fold(dict.new(), fn(outer_acc, line, y) {
+      string.to_graphemes(line)
+      |> list.index_fold(outer_acc, fn(acc, char, x) {
+        case char {
+          "#" -> dict.insert(acc, #(x, y), [#(1, 1)])
+          _ -> acc
+        }
+      })
+    })
+    |> grid_from_robots
+
+  io.println(draw(test_grid))
+  test_grid
+  |> is_symmetrical
+  |> io.debug
+
   let assert Ok(re) = regex.from_string("-?\\d+")
 
   let robots =
@@ -29,13 +55,7 @@ pub fn main() {
     |> list.group(pair.first)
     |> dict.map_values(fn(_, values) { list.map(values, pair.second) })
 
-  let positions = dict.keys(robots)
-  let max_x =
-    list.fold(positions, 0, fn(acc, position) { int.max(acc, position.0) })
-  let max_y =
-    list.fold(positions, 0, fn(acc, position) { int.max(acc, position.1) })
-
-  let grid = Grid(max_x:, max_y:, robots:)
+  let grid = grid_from_robots(robots)
 
   io.println(draw(grid))
 
@@ -49,14 +69,22 @@ pub fn main() {
   Nil
 }
 
+fn grid_from_robots(robots: Dict(#(Int, Int), List(#(Int, Int)))) -> Grid {
+  let positions = dict.keys(robots)
+  let max_x =
+    list.fold(positions, 0, fn(acc, position) { int.max(acc, position.0) })
+  let max_y =
+    list.fold(positions, 0, fn(acc, position) { int.max(acc, position.1) })
+
+  Grid(max_x:, max_y:, robots:)
+}
+
 // A Christmas tree is probably symmetrical.
-// Guess: If left vs right quadrants contain the same number of robots, there’s a chance it’s a Christmas tree.
-// Turned out not to be true.
+// If the grid is symmetrical along the vertical middle, it probably is a Christmas tree.
+// I don’t seem to find anything in the first million seconds though.
 fn search_for_christmas_tree(grid: Grid, i: Int) -> #(Grid, Int) {
-  case
-    count_quadrant(grid, Top, Left) == count_quadrant(grid, Top, Right)
-    && count_quadrant(grid, Bottom, Left) == count_quadrant(grid, Bottom, Right)
-  {
+  io.print(int.to_string(i) <> "\r")
+  case is_symmetrical(grid) {
     True -> #(grid, i)
     False -> search_for_christmas_tree(cycle(grid), i + 1)
   }
@@ -81,33 +109,22 @@ fn cycle(grid: Grid) -> Grid {
   Grid(..grid, robots: new_robots)
 }
 
-type Vertical {
-  Top
-  Bottom
-}
-
-type Horizontal {
-  Left
-  Right
-}
-
-fn count_quadrant(grid: Grid, vertical: Vertical, horizontal: Horizontal) -> Int {
-  let xs = case horizontal {
-    Left -> list.range(0, grid.max_x / 2 - 1)
-    Right -> list.range(grid.max_x / 2 + 1, grid.max_x)
-  }
-  let ys = case vertical {
-    Top -> list.range(0, grid.max_y / 2 - 1)
-    Bottom -> list.range(grid.max_y / 2 + 1, grid.max_y)
-  }
-  list.fold(xs, 0, fn(outer_sum, x) {
-    list.fold(ys, outer_sum, fn(sum, y) {
-      case dict.get(grid.robots, #(x, y)) {
-        Error(Nil) -> sum
-        Ok(robots) -> sum + list.length(robots)
+fn is_symmetrical(grid: Grid) -> Bool {
+  let count =
+    list.range(0, grid.max_y)
+    |> list.fold(0, fn(outer_sum, y) {
+      outer_sum
+      + {
+        list.range(0, grid.max_x / 2 - 1)
+        |> list.count(fn(x) {
+          let has_left = dict.has_key(grid.robots, #(x, y))
+          let has_right = dict.has_key(grid.robots, #(grid.max_x - x, y))
+          has_left == has_right
+        })
       }
     })
-  })
+  int.to_float(count)
+  >. int.to_float({ grid.max_x / 2 } * { grid.max_y + 1 }) *. 0.93
 }
 
 fn draw(grid: Grid) -> String {
