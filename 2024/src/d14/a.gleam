@@ -8,11 +8,32 @@ import gleam/regex
 import gleam/string
 import line_parser
 
-type Grid {
+pub type Grid {
   Grid(max_x: Int, max_y: Int, robots: Dict(#(Int, Int), List(#(Int, Int))))
 }
 
 pub fn main() {
+  let grid = parse()
+
+  let final_grid =
+    list.range(1, 100)
+    |> list.fold(grid, fn(acc, _) { cycle(acc) })
+
+  io.println(draw(grid))
+  io.println("--->")
+  io.println(draw(final_grid))
+
+  [#(Top, Left), #(Top, Right), #(Bottom, Left), #(Bottom, Right)]
+  |> list.map(fn(tuple) {
+    let #(vertical, horizontal) = tuple
+    count_quadrant(final_grid, vertical, horizontal)
+  })
+  |> int.product
+  |> int.to_string
+  |> io.println
+}
+
+pub fn parse() -> Grid {
   let assert Ok(re) = regex.from_string("-?\\d+")
 
   let robots =
@@ -29,37 +50,20 @@ pub fn main() {
     |> list.group(pair.first)
     |> dict.map_values(fn(_, values) { list.map(values, pair.second) })
 
+  grid_from_robots(robots)
+}
+
+fn grid_from_robots(robots: Dict(#(Int, Int), List(#(Int, Int)))) -> Grid {
   let positions = dict.keys(robots)
   let max_x =
     list.fold(positions, 0, fn(acc, position) { int.max(acc, position.0) })
   let max_y =
     list.fold(positions, 0, fn(acc, position) { int.max(acc, position.1) })
 
-  let grid = Grid(max_x:, max_y:, robots:)
-
-  io.println(draw(grid))
-
-  let final_grid =
-    list.range(1, 100)
-    |> list.fold(grid, fn(acc, _) { cycle(acc) })
-
-  io.println("---")
-  io.println(draw(final_grid))
-
-  io.println("---")
-  [#(Top, Left), #(Top, Right), #(Bottom, Left), #(Bottom, Right)]
-  |> list.map(fn(tuple) {
-    let #(vertical, horizontal) = tuple
-    count_quadrant(final_grid, vertical, horizontal)
-  })
-  |> io.debug
-  |> int.product
-  |> io.debug
-
-  Nil
+  Grid(max_x:, max_y:, robots:)
 }
 
-fn cycle(grid: Grid) -> Grid {
+pub fn cycle(grid: Grid) -> Grid {
   let new_robots =
     dict.fold(grid.robots, dict.new(), fn(outer_acc, position, robots) {
       let #(x, y) = position
@@ -107,7 +111,7 @@ fn count_quadrant(grid: Grid, vertical: Vertical, horizontal: Horizontal) -> Int
   })
 }
 
-fn draw(grid: Grid) -> String {
+pub fn draw(grid: Grid) -> String {
   list.range(0, grid.max_y)
   |> list.map(fn(y) {
     list.range(0, grid.max_x)
