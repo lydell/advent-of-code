@@ -85,7 +85,7 @@ fn grid_from_robots(robots: Dict(#(Int, Int), List(#(Int, Int)))) -> Grid {
 // I don’t seem to find anything in the first million seconds though.
 fn search_for_christmas_tree(grid: Grid, i: Int) -> #(Grid, Int) {
   io.print(int.to_string(i) <> "\r")
-  case is_symmetrical(grid) {
+  case has_line(grid) {
     True -> #(grid, i)
     False -> search_for_christmas_tree(cycle(grid), i + 1)
   }
@@ -108,6 +108,14 @@ fn cycle(grid: Grid) -> Grid {
       })
     })
   Grid(..grid, robots: new_robots)
+}
+
+fn has_line(grid: Grid) -> Bool {
+  grid.robots
+  |> dict.keys
+  |> list.group(pair.second)
+  |> dict.values
+  |> list.any(fn(items) { list.length(items) > 40 })
 }
 
 fn is_symmetrical(grid: Grid) -> Bool {
