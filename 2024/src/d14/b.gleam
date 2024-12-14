@@ -115,7 +115,18 @@ fn has_line(grid: Grid) -> Bool {
   |> dict.keys
   |> list.group(pair.second)
   |> dict.values
-  |> list.any(fn(items) { list.length(items) > 40 })
+  |> list.any(fn(items) {
+    let xs = list.map(items, pair.first)
+    let #(longest, _, _) =
+      list.fold(xs, #(0, 0, -2), fn(triple, x) {
+        let #(longest, current, previous_x) = triple
+        case x == previous_x - 1 {
+          True -> #(int.max(longest, current + 1), current + 1, x)
+          False -> #(int.max(longest, current), 1, x)
+        }
+      })
+    longest > 4
+  })
 }
 
 fn is_symmetrical(grid: Grid) -> Bool {
