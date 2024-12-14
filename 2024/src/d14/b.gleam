@@ -3,6 +3,7 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option
+import gleam/order
 import gleam/pair
 import gleam/regex
 import gleam/string
@@ -16,7 +17,7 @@ pub fn main() {
   let test_grid =
     "
 ....#....
-...#.#...
+...#.#..#
 ..#...#..
 .#.....#.
 #.......#
@@ -110,21 +111,16 @@ fn cycle(grid: Grid) -> Grid {
 }
 
 fn is_symmetrical(grid: Grid) -> Bool {
-  let count =
-    list.range(0, grid.max_y)
-    |> list.fold(0, fn(outer_sum, y) {
-      outer_sum
-      + {
-        list.range(0, grid.max_x / 2 - 1)
-        |> list.count(fn(x) {
-          let has_left = dict.has_key(grid.robots, #(x, y))
-          let has_right = dict.has_key(grid.robots, #(grid.max_x - x, y))
-          has_left == has_right
-        })
+  let sym =
+    dict.fold(grid.robots, 0, fn(sum, position, _) {
+      let #(x, y) = position
+      case dict.has_key(grid.robots, #(grid.max_x - x, y)) {
+        False -> sum
+        True -> sum + 1
       }
     })
-  int.to_float(count)
-  >. int.to_float({ grid.max_x / 2 } * { grid.max_y + 1 }) *. 0.93
+
+  int.to_float(sym) >=. int.to_float(dict.size(grid.robots)) *. 0.2
 }
 
 fn draw(grid: Grid) -> String {
@@ -136,9 +132,22 @@ fn draw(grid: Grid) -> String {
         Error(Nil) -> "."
         Ok(robots) -> {
           let length = list.length(robots)
-          case length < 10 {
+          let s = case length < 10 {
             True -> int.to_string(length)
             False -> "+"
+          }
+          case int.compare(x, grid.max_x / 2) {
+            order.Eq -> "^"
+            order.Lt ->
+              case dict.has_key(grid.robots, #(grid.max_x - x, y)) {
+                False -> s
+                True -> "<"
+              }
+            order.Gt ->
+              case dict.has_key(grid.robots, #(grid.max_x - x, y)) {
+                False -> s
+                True -> ">"
+              }
           }
         }
       }
