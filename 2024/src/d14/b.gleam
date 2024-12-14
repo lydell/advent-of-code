@@ -57,7 +57,13 @@ fn search_for_christmas_tree(grid: Grid, i: Int) -> #(Grid, Int) {
     count_quadrant(grid, Top, Left) == count_quadrant(grid, Top, Right)
     && count_quadrant(grid, Bottom, Left) == count_quadrant(grid, Bottom, Right)
   {
-    True -> #(grid, i)
+    True -> {
+      io.println("---")
+      io.println(draw(grid))
+
+      io.debug(i)
+      search_for_christmas_tree(cycle(grid), i + 1)
+    }
     False -> search_for_christmas_tree(cycle(grid), i + 1)
   }
 }
@@ -104,7 +110,7 @@ fn count_quadrant(grid: Grid, vertical: Vertical, horizontal: Horizontal) -> Int
     list.fold(ys, outer_sum, fn(sum, y) {
       case dict.get(grid.robots, #(x, y)) {
         Error(Nil) -> sum
-        Ok(robots) -> sum + list.length(robots)
+        Ok(_) -> sum + 1
       }
     })
   })
