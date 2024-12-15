@@ -16,13 +16,30 @@ type Rule {
 }
 
 pub fn main() {
-  let #(rules, updates) = case parse() {
-    Error(error) -> {
-      io.println_error(error)
-      panic
-    }
-    Ok(return) -> return
-  }
+  let #(rules, updates) =
+    line_parser.parse_stdin_two_sections(
+      fn(line) {
+        case string.split(line, "|") {
+          [left, right] -> {
+            use left_int <- result.try(line_parser.parse_int("Left", left))
+            use right_int <- result.map(line_parser.parse_int("Right", right))
+            Rule(left_int, right_int)
+          }
+          _ -> Error("Unexpected rule: " <> line)
+        }
+      },
+      fn(line) {
+        line_parser.parse_general(
+          string.split(line, ","),
+          "Rule",
+          function.identity,
+          line_parser.parse_int("Page number", _),
+        )
+        |> result.map(list.index_map(_, fn(page_number, index) {
+          Page(index, page_number)
+        }))
+      },
+    )
 
   let #(valid_updates, invalid_updates) =
     updates
@@ -43,50 +60,6 @@ pub fn main() {
 
   io.println("Part 1: " <> int.to_string(part1))
   io.println("Part 2: " <> int.to_string(part2))
-}
-
-fn parse() -> Result(#(List(Rule), List(List(Page))), String) {
-  let #(rules_section, updates_section) =
-    line_parser.parse_stdin(Ok)
-    |> list.split_while(fn(line) { line != "" })
-
-  use rules <- result.try(
-    line_parser.parse_general(
-      rules_section,
-      "Rule",
-      function.identity,
-      fn(line) {
-        case string.split(line, "|") {
-          [left, right] -> {
-            use left_int <- result.try(line_parser.parse_int("Left", left))
-            use right_int <- result.map(line_parser.parse_int("Right", right))
-            Rule(left_int, right_int)
-          }
-          _ -> Error("Unexpected rule: " <> line)
-        }
-      },
-    ),
-  )
-
-  use updates <- result.map(line_parser.parse_general(
-    // Drop the blank line.
-    list.drop(updates_section, 1),
-    "Update",
-    function.identity,
-    fn(line) {
-      line_parser.parse_general(
-        string.split(line, ","),
-        "Rule",
-        function.identity,
-        line_parser.parse_int("Page number", _),
-      )
-      |> result.map(list.index_map(_, fn(page_number, index) {
-        Page(index, page_number)
-      }))
-    },
-  ))
-
-  #(rules, updates)
 }
 
 fn is_valid_update(update: List(Page), rules: List(Rule)) -> Bool {

@@ -23,13 +23,7 @@ type Grid =
   Dict(Position, Tile)
 
 pub fn main() {
-  let #(lines, moves) = case a.parse() {
-    Error(error) -> {
-      io.println_error(error)
-      panic
-    }
-    Ok(return) -> return
-  }
+  let #(lines, moves) = a.parse()
 
   let #(start_grid, start_position) =
     list.index_fold(lines, #(dict.new(), #(0, 0)), fn(outer_acc, line, y) {

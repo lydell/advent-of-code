@@ -3,7 +3,7 @@ import gleam/function
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/result
+import gleam/pair
 import gleam/string
 import line_parser
 
@@ -33,13 +33,7 @@ type Grid =
   Dict(Position, Tile)
 
 pub fn main() {
-  let #(lines, moves) = case parse() {
-    Error(error) -> {
-      io.println_error(error)
-      panic
-    }
-    Ok(return) -> return
-  }
+  let #(lines, moves) = parse()
 
   let #(start_grid, start_position) =
     list.index_fold(lines, #(dict.new(), #(0, 0)), fn(outer_acc, line, y) {
@@ -73,13 +67,9 @@ pub fn main() {
   |> io.println
 }
 
-pub fn parse() -> Result(#(List(List(InputChar)), List(Move)), String) {
-  let #(grid_section, moves_section) =
-    line_parser.parse_stdin(Ok)
-    |> list.split_while(fn(line) { line != "" })
-
-  use lines <- result.try(
-    line_parser.parse_general(grid_section, "Line", function.identity, fn(line) {
+pub fn parse() -> #(List(List(InputChar)), List(Move)) {
+  line_parser.parse_stdin_two_sections(
+    fn(line) {
       line_parser.parse_general(
         string.to_graphemes(line),
         "Char",
@@ -94,14 +84,7 @@ pub fn parse() -> Result(#(List(List(InputChar)), List(Move)), String) {
           }
         },
       )
-    }),
-  )
-
-  use moves <- result.map(line_parser.parse_general(
-    // Drop the blank line.
-    list.drop(moves_section, 1),
-    "Line",
-    function.identity,
+    },
     fn(line) {
       line_parser.parse_general(
         string.to_graphemes(line),
@@ -118,9 +101,8 @@ pub fn parse() -> Result(#(List(List(InputChar)), List(Move)), String) {
         },
       )
     },
-  ))
-
-  #(lines, list.flatten(moves))
+  )
+  |> pair.map_second(list.flatten)
 }
 
 fn evaluate_move(tuple: #(Grid, Position), move: Move) -> #(Grid, Position) {

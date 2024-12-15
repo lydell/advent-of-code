@@ -7,17 +7,7 @@ import gleam/result
 import gleam/string
 import stdin.{stdin}
 
-pub fn parse_stdin(parser: fn(String) -> Result(a, String)) -> List(a) {
-  let result =
-    stdin()
-    |> iterator.to_list
-    |> list.map(fn(line) {
-      case string.ends_with(line, "\n") {
-        True -> string.drop_end(line, 1)
-        False -> line
-      }
-    })
-    |> parse_general("Line", function.identity, parser)
+fn panic_on_error(result: Result(a, String)) -> a {
   case result {
     Error(error) -> {
       io.println_error(error)
@@ -27,28 +17,63 @@ pub fn parse_stdin(parser: fn(String) -> Result(a, String)) -> List(a) {
   }
 }
 
+pub fn parse_stdin(parser: fn(String) -> Result(a, String)) -> List(a) {
+  stdin()
+  |> iterator.to_list
+  |> list.map(fn(line) {
+    case string.ends_with(line, "\n") {
+      True -> string.drop_end(line, 1)
+      False -> line
+    }
+  })
+  |> parse_general("Line", function.identity, parser)
+  |> panic_on_error
+}
+
 pub fn parse_stdin_empty_line_delimited_chunks(
   parser: fn(List(String)) -> Result(a, String),
 ) {
-  let result =
-    stdin()
-    |> iterator.to_list
-    |> list.map(fn(line) {
-      case string.ends_with(line, "\n") {
-        True -> string.drop_end(line, 1)
-        False -> line
-      }
-    })
-    |> list.chunk(string.is_empty)
-    |> list.filter(fn(chunk) { !list.all(chunk, string.is_empty) })
-    |> parse_general("Chunk", string.join(_, "\n"), parser)
-  case result {
-    Error(error) -> {
-      io.println_error(error)
-      panic
+  stdin()
+  |> iterator.to_list
+  |> list.map(fn(line) {
+    case string.ends_with(line, "\n") {
+      True -> string.drop_end(line, 1)
+      False -> line
     }
-    Ok(list) -> list
+  })
+  |> list.chunk(string.is_empty)
+  |> list.filter(fn(chunk) { !list.all(chunk, string.is_empty) })
+  |> parse_general("Chunk", string.join(_, "\n"), parser)
+  |> panic_on_error
+}
+
+pub fn parse_stdin_two_sections(
+  section1_parser: fn(String) -> Result(a, String),
+  section2_parser: fn(String) -> Result(b, String),
+) -> #(List(a), List(b)) {
+  {
+    let #(section1, section2) =
+      parse_stdin(Ok)
+      |> list.split_while(fn(line) { line != "" })
+
+    use a <- result.try(parse_general(
+      section1,
+      "Section 1, line",
+      function.identity,
+      section1_parser,
+    ))
+
+    use b <- result.map(parse_general(
+      // Drop the blank line.
+      list.drop(section2, 1),
+      "Section 2, line",
+      function.identity,
+      section2_parser,
+    ))
+
+    #(a, b)
   }
+  |> panic_on_error
 }
 
 // Ported from 2020/src/LineParser.elm.
