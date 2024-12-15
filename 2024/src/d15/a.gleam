@@ -7,7 +7,7 @@ import gleam/result
 import gleam/string
 import line_parser
 
-type InputChar {
+pub type InputChar {
   Hash
   O
   At
@@ -19,7 +19,7 @@ type Tile {
   Block
 }
 
-type Move {
+pub type Move {
   Left
   Right
   Up
@@ -33,13 +33,26 @@ type Grid =
   Dict(Position, Tile)
 
 pub fn main() {
-  let #(start_grid, start_position, moves) = case parse() {
+  let #(lines, moves) = case parse() {
     Error(error) -> {
       io.println_error(error)
       panic
     }
     Ok(return) -> return
   }
+
+  let #(start_grid, start_position) =
+    list.index_fold(lines, #(dict.new(), #(0, 0)), fn(outer_acc, line, y) {
+      list.index_fold(line, outer_acc, fn(tuple, input_char, x) {
+        let #(grid, start_position) = tuple
+        case input_char {
+          At -> #(grid, #(x, y))
+          Dot -> tuple
+          Hash -> #(dict.insert(grid, #(x, y), Wall), start_position)
+          O -> #(dict.insert(grid, #(x, y), Block), start_position)
+        }
+      })
+    })
 
   let #(end_grid, end_position) =
     moves
@@ -56,10 +69,11 @@ pub fn main() {
       }
     }
   })
-  |> io.debug
+  |> int.to_string
+  |> io.println
 }
 
-fn parse() -> Result(#(Grid, Position, List(Move)), String) {
+pub fn parse() -> Result(#(List(List(InputChar)), List(Move)), String) {
   let #(grid_section, moves_section) =
     line_parser.parse_stdin(Ok)
     |> list.split_while(fn(line) { line != "" })
@@ -82,19 +96,6 @@ fn parse() -> Result(#(Grid, Position, List(Move)), String) {
       )
     }),
   )
-
-  let #(grid, start_position) =
-    list.index_fold(lines, #(dict.new(), #(0, 0)), fn(outer_acc, line, y) {
-      list.index_fold(line, outer_acc, fn(tuple, input_char, x) {
-        let #(grid, start_position) = tuple
-        case input_char {
-          At -> #(grid, #(x, y))
-          Dot -> tuple
-          Hash -> #(dict.insert(grid, #(x, y), Wall), start_position)
-          O -> #(dict.insert(grid, #(x, y), Block), start_position)
-        }
-      })
-    })
 
   use moves <- result.map(line_parser.parse_general(
     // Drop the blank line.
@@ -119,7 +120,7 @@ fn parse() -> Result(#(Grid, Position, List(Move)), String) {
     },
   ))
 
-  #(grid, start_position, list.flatten(moves))
+  #(lines, list.flatten(moves))
 }
 
 fn evaluate_move(tuple: #(Grid, Position), move: Move) -> #(Grid, Position) {
@@ -146,7 +147,7 @@ fn evaluate_move(tuple: #(Grid, Position), move: Move) -> #(Grid, Position) {
   }
 }
 
-fn move_to_dx_dy(move: Move) -> #(Int, Int) {
+pub fn move_to_dx_dy(move: Move) -> #(Int, Int) {
   case move {
     Down -> #(0, 1)
     Left -> #(-1, 0)
@@ -186,9 +187,13 @@ fn draw(grid: Grid, robot_position: Position) -> String {
       let position = #(x, y)
       case position == robot_position {
         True ->
-          case dict.has_key(grid, position) {
-            True -> "%"
-            False -> "@"
+          case dict.get(grid, position) {
+            Error(Nil) -> "@"
+            Ok(tile) ->
+              case tile {
+                Block -> "0"
+                Wall -> "%"
+              }
           }
         False ->
           case dict.get(grid, position) {

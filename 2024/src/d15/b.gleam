@@ -1,18 +1,10 @@
+import d15/a.{type Move, At, Dot, Down, Hash, Left, O, Right, Up}
 import gleam/dict.{type Dict}
-import gleam/function
 import gleam/int
 import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
-import line_parser
-
-type InputChar {
-  Hash
-  O
-  At
-  Dot
-}
 
 type Tile {
   Wall
@@ -24,13 +16,6 @@ type Side {
   R
 }
 
-type Move {
-  Left
-  Right
-  Up
-  Down
-}
-
 type Position =
   #(Int, Int)
 
@@ -38,7 +23,7 @@ type Grid =
   Dict(Position, Tile)
 
 pub fn main() {
-  let #(start_grid, start_position, moves) = case parse() {
+  let #(lines, moves) = case a.parse() {
     Error(error) -> {
       io.println_error(error)
       panic
@@ -46,51 +31,7 @@ pub fn main() {
     Ok(return) -> return
   }
 
-  io.println(draw(start_grid, start_position))
-  let #(end_grid, end_position) =
-    moves
-    |> list.fold(#(start_grid, start_position), evaluate_move)
-
-  io.println(draw(end_grid, end_position))
-  dict.fold(end_grid, 0, fn(sum, position, tile) {
-    case tile {
-      Block(L) -> {
-        let #(x, y) = position
-        sum + 100 * y + x
-      }
-      _ -> sum
-    }
-  })
-  |> io.debug
-
-  Nil
-}
-
-fn parse() -> Result(#(Grid, Position, List(Move)), String) {
-  let #(grid_section, moves_section) =
-    line_parser.parse_stdin(Ok)
-    |> list.split_while(fn(line) { line != "" })
-
-  use lines <- result.try(
-    line_parser.parse_general(grid_section, "Line", function.identity, fn(line) {
-      line_parser.parse_general(
-        string.to_graphemes(line),
-        "Char",
-        function.identity,
-        fn(char) {
-          case char {
-            "#" -> Ok(Hash)
-            "O" -> Ok(O)
-            "@" -> Ok(At)
-            "." -> Ok(Dot)
-            _ -> Error("Unexpected grid char")
-          }
-        },
-      )
-    }),
-  )
-
-  let #(grid, start_position) =
+  let #(start_grid, start_position) =
     list.index_fold(lines, #(dict.new(), #(0, 0)), fn(outer_acc, line, y) {
       list.index_fold(line, outer_acc, fn(tuple, input_char, raw_x) {
         let x = raw_x * 2
@@ -112,35 +53,28 @@ fn parse() -> Result(#(Grid, Position, List(Move)), String) {
       })
     })
 
-  use moves <- result.map(line_parser.parse_general(
-    // Drop the blank line.
-    list.drop(moves_section, 1),
-    "Line",
-    function.identity,
-    fn(line) {
-      line_parser.parse_general(
-        string.to_graphemes(line),
-        "Char",
-        function.identity,
-        fn(char) {
-          case char {
-            "<" -> Ok(Left)
-            ">" -> Ok(Right)
-            "^" -> Ok(Up)
-            "v" -> Ok(Down)
-            _ -> Error("Unexpected move char")
-          }
-        },
-      )
-    },
-  ))
+  let #(end_grid, end_position) =
+    moves
+    |> list.fold(#(start_grid, start_position), evaluate_move)
 
-  #(grid, start_position, list.flatten(moves))
+  io.println(draw(end_grid, end_position))
+
+  dict.fold(end_grid, 0, fn(sum, position, tile) {
+    case tile {
+      Block(L) -> {
+        let #(x, y) = position
+        sum + 100 * y + x
+      }
+      _ -> sum
+    }
+  })
+  |> int.to_string
+  |> io.println
 }
 
 fn evaluate_move(tuple: #(Grid, Position), move: Move) -> #(Grid, Position) {
   let #(grid, #(x, y)) = tuple
-  let #(dx, dy) = move_to_dx_dy(move)
+  let #(dx, dy) = a.move_to_dx_dy(move)
   let new_x = x + dx
   let new_y = y + dy
   let new_position = #(new_x, new_y)
@@ -164,15 +98,6 @@ fn evaluate_move(tuple: #(Grid, Position), move: Move) -> #(Grid, Position) {
           }
         }
       }
-  }
-}
-
-fn move_to_dx_dy(move: Move) -> #(Int, Int) {
-  case move {
-    Down -> #(0, 1)
-    Left -> #(-1, 0)
-    Right -> #(1, 0)
-    Up -> #(0, -1)
   }
 }
 
