@@ -150,32 +150,17 @@ fn evaluate_move(tuple: #(Grid, Position), move: Move) -> #(Grid, Position) {
       case tile {
         Wall -> tuple
         Block(side) -> {
-          case move {
+          let new_grid_result = case move {
             Down | Up -> {
-              case try_push_block_vertical(grid, new_position, side, dy) {
-                Error(Nil) -> tuple
-                Ok(new_grid) -> #(new_grid, new_position)
-              }
+              try_push_block_vertical(grid, new_position, side, dy)
             }
             Left | Right -> {
-              case try_push_block_horizontal(grid, new_position, dx) {
-                Error(Nil) -> tuple
-                Ok(new_block_x) -> {
-                  let size = int.absolute_value(new_x - new_block_x)
-                  let new_grid =
-                    list.range(0, size - 1)
-                    |> list.fold(dict.delete(grid, new_position), fn(acc, i) {
-                      let block_x = int.min(new_x + 1, new_block_x) + i
-                      let block_side = case int.is_even(i) {
-                        True -> L
-                        False -> R
-                      }
-                      dict.insert(acc, #(block_x, y), Block(block_side))
-                    })
-                  #(new_grid, new_position)
-                }
-              }
+              try_push_block_horizontal(grid, new_position, dx)
             }
+          }
+          case new_grid_result {
+            Error(Nil) -> tuple
+            Ok(new_grid) -> #(new_grid, new_position)
           }
         }
       }
@@ -195,6 +180,29 @@ fn try_push_block_horizontal(
   grid: Grid,
   position: Position,
   dx: Int,
+) -> Result(Grid, Nil) {
+  let #(x, y) = position
+  use new_block_x <- result.map(try_push_block_horizontal_helper(
+    grid,
+    position,
+    dx,
+  ))
+  let size = int.absolute_value(x - new_block_x)
+  list.range(0, size - 1)
+  |> list.fold(dict.delete(grid, position), fn(acc, i) {
+    let block_x = int.min(x + 1, new_block_x) + i
+    let block_side = case int.is_even(i) {
+      True -> L
+      False -> R
+    }
+    dict.insert(acc, #(block_x, y), Block(block_side))
+  })
+}
+
+fn try_push_block_horizontal_helper(
+  grid: Grid,
+  position: Position,
+  dx: Int,
 ) -> Result(Int, Nil) {
   let #(x, y) = position
   let new_x = x + dx
@@ -204,7 +212,7 @@ fn try_push_block_horizontal(
     Ok(tile) ->
       case tile {
         Wall -> Error(Nil)
-        Block(_) -> try_push_block_horizontal(grid, new_position, dx)
+        Block(_) -> try_push_block_horizontal_helper(grid, new_position, dx)
       }
   }
 }
