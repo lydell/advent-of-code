@@ -99,18 +99,23 @@ pub fn main() {
       |> list.fold(first, int.min)
   }
 
-  end_nodes
-  |> list.filter(fn(tuple) {
-    let #(_, #(cost, _)) = tuple
-    cost == min_cost
-  })
-  |> list.fold(set.new(), fn(acc, tuple) {
-    let #(node, _) = tuple
-    get_full_path(acc, table, node)
-  })
-  |> set.map(fn(node) { node.position })
-  |> set.size
-  |> io.debug
+  let part1 = min_cost
+
+  let part2 =
+    end_nodes
+    |> list.filter(fn(tuple) {
+      let #(_, #(cost, _)) = tuple
+      cost == min_cost
+    })
+    |> list.fold(set.new(), fn(acc, tuple) {
+      let #(node, _) = tuple
+      get_full_path(acc, table, node)
+    })
+    |> set.map(fn(node) { node.position })
+    |> set.size
+
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println("Part 2: " <> int.to_string(part2))
 }
 
 fn get_full_path(
@@ -160,6 +165,8 @@ fn turns(from: Direction, to: Direction) {
   }
 }
 
+// Ported from 2023/17/ab.py and modified to return a list of previous nodes for every node,
+// instead of just one of the possible ones on the cheapest path (arbitrarily chosen).
 fn dijkstra(
   current: node,
   get_neighbors: fn(node) -> List(#(Int, node)),
