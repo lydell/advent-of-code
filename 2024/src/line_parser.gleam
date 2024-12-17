@@ -7,7 +7,7 @@ import gleam/result
 import gleam/string
 import stdin.{stdin}
 
-fn panic_on_error(result: Result(a, String)) -> a {
+pub fn panic_on_error(result: Result(a, String)) -> a {
   case result {
     Error(error) -> {
       io.println_error(error)
