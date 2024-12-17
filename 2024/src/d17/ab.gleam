@@ -78,6 +78,11 @@ pub fn main() {
     }
     |> line_parser.panic_on_error
 
+  let part1 =
+    eval(registers, 0, ops)
+    |> list.map(int.to_string)
+    |> string.join(",")
+
   // io.debug(dict.values(ops))
   // eval(registers, 0, ops)
   // |> list.map(int.to_string)
@@ -99,12 +104,16 @@ pub fn main() {
   //   io.println(int.to_string(a) <> ": " <> numbers)
   // })
 
-  case list.reverse(numbers) {
+  let part2 = case list.reverse(numbers) {
     [] -> panic as "numbers is empty"
-    [last, ..rest] -> search(registers, ops, 0, 7, rest, [last]) |> io.debug
+    [last, ..rest] ->
+      search(registers, ops, 0, 7, rest, [last])
+      |> list.map(int.to_string)
+      |> string.join(" OR ")
   }
 
-  Nil
+  io.println("Part 1: " <> part1)
+  io.println("Part 2: " <> part2)
 }
 
 fn search(registers, ops, lower, upper, reversed_key, acc) {
