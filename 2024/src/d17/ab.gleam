@@ -83,27 +83,52 @@ pub fn main() {
     |> list.map(int.to_string)
     |> string.join(",")
 
-  // io.debug(dict.values(ops))
-  // eval(registers, 0, ops)
-  // |> list.map(int.to_string)
-  // |> string.join(",")
-  // |> io.println
-
-  // let t = 37_293_246_000_000
-  // let t = 35_193_246_000_000
-  // let t = 200_193_246_000_000
-  // let t = 290_000_000_000_000
-  // let t = 0
-  // list.range(t, t + 100)
-  // list.range(0, 8)
-  // |> list.each(fn(a) {
-  //   let numbers =
-  //     eval(Registers(..registers, a:), 0, ops)
-  //     |> list.map(int.to_string)
-  //     |> string.join(",")
-  //   io.println(int.to_string(a) <> ": " <> numbers)
-  // })
-
+  // My input ends with adv(3), out(b), jnz(0).
+  // That `adv` is the _only_ thing that mutates the A register.
+  // That `out` is the _only_ op that outputs.
+  // That `jnz` is the _only_ jump.
+  // Then my input translates to:
+  //
+  // while A != 0:
+  //   mutate B and C a bunch
+  //   A = A // 2**3
+  //   out(B % 8)
+  //
+  // Since the jump is at the end, and it only jumps if a isn’t 0,
+  // and we know that A doesn’t start out as 0, and it is the only jump,
+  // it is effectively a while loop, where A becomes smaller (divided by 8, the only mutation)
+  // each iteration until it becomes 0.
+  //
+  // Since there is only a single `out`, and it prints based on the register B,
+  // we only need to consider what it takes for it to output a wanted number.
+  //
+  // `mutate B and C a bunch` set both register B and C based on register A,
+  // so no state is carried between iterations.
+  //
+  // Since register A is divided by 8 each time, A must be 0-8 in order to output just one number.
+  // Since the iterations are independent, an A of 0-8 must output the last wanted number.
+  // By running with A set to each of 0-8, I noticed that just one of the results was the wanted value (0).
+  // Then I knew what A had to be at the last iteration. That was when A=1.
+  //
+  // What does it take from the iteration before to get A=1 on the last iteration?
+  // Well, 8-15 all become 1 when divided by 8 and truncated. So it has to be one of those.
+  // When I ran with A set to each of 8-15, the same thing happened: Only one of the results was the
+  // last two wanted values (3,0). That was at A=10.
+  //
+  // What does it take from the iteration before that to get A=10? 80-87 all become 10 when divided
+  // by 8 and truncated. In other words, for a working A value on one iteration, I need to try
+  // from A*8 to (A+1)*8-1 in the previous iteration.
+  //
+  // And so on. After a while, more than one result matched, so then I had to try both of those
+  // (a list of matching results, not just one). In the end, only a single A value was found.
+  // (a list with one item).
+  //
+  // Note: This only works with my specific input. But I think that it can be tweaked for solve other
+  // people’s inputs – I guess all have similar characteristics with just minor differences.
+  //
+  // Note 2: Since the part 2 is input specific, it would have been a lot easier to just hard code
+  // part 1 too (hand translate the ops to code), instead of parsing the input and implement the whole interpreter.
+  // But it was fun at least!
   let part2 = case list.reverse(numbers) {
     [] -> panic as "numbers is empty"
     [last, ..rest] ->
@@ -114,23 +139,6 @@ pub fn main() {
 
   io.println("Part 1: " <> part1)
   io.println("Part 2: " <> part2)
-}
-
-fn search(registers, ops, lower, upper, reversed_key, acc) {
-  let alternatives =
-    list.range(lower, upper)
-    |> list.filter(fn(a) {
-      let numbers = eval(Registers(..registers, a:), 0, ops)
-      numbers == acc
-    })
-  case reversed_key {
-    [] -> alternatives
-    [next, ..rest] ->
-      alternatives
-      |> list.flat_map(fn(a) {
-        search(registers, ops, a * 8, { a + 1 } * 8 - 1, rest, [next, ..acc])
-      })
-  }
 }
 
 fn make_pairs(items: List(a)) -> Result(List(#(a, a)), Nil) {
@@ -252,5 +260,20 @@ fn get_combo_value(combo: Combo, registers: Registers) -> Int {
     RA -> registers.a
     RB -> registers.b
     RC -> registers.c
+  }
+}
+
+fn search(registers, ops, lower, upper, reversed_key, acc) {
+  let alternatives =
+    list.range(lower, upper)
+    |> list.filter(fn(a) { eval(Registers(..registers, a:), 0, ops) == acc })
+  case reversed_key {
+    [] -> alternatives
+    [next, ..rest] ->
+      alternatives
+      |> list.flat_map(fn(a) {
+        // See the comment at `let part2` for how `lower` and `upper` are calculated here.
+        search(registers, ops, a * 8, { a + 1 } * 8 - 1, rest, [next, ..acc])
+      })
   }
 }
