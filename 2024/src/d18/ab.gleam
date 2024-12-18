@@ -22,7 +22,7 @@ pub fn main() {
       #(left_int, right_int)
     })
 
-  let start = case list.length(all_positions) < 100 {
+  let start = case list.length(all_positions) < 1024 {
     True -> 12
     False -> 1024
   }
@@ -35,11 +35,10 @@ pub fn main() {
   let max_y =
     list.fold(start_positions, 0, fn(max, position) { int.max(max, position.1) })
 
-  let working_table = go(all_positions, max_x, max_y, start)
+  let assert Ok(#(part1, _)) =
+    go(all_positions, max_x, max_y, start) |> dict.get(#(max_x, max_y))
 
-  let assert Ok(#(cost, _)) = dict.get(working_table, #(max_x, max_y))
-
-  let assert Ok(first_bad_position) =
+  let assert Ok(#(part2x, part2y)) =
     list.range(start, list.length(all_positions))
     |> list.find_map(fn(length) {
       let table = go(all_positions, max_x, max_y, length)
@@ -55,7 +54,10 @@ pub fn main() {
       }
     })
 
-  io.debug(first_bad_position)
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println(
+    "Part 2: " <> int.to_string(part2x) <> "," <> int.to_string(part2y),
+  )
 }
 
 fn go(all_positions, max_x, max_y, length) {
@@ -76,12 +78,6 @@ fn go(all_positions, max_x, max_y, length) {
     })
     |> set.from_list
 
-  // io.println(draw(max_x, max_y, positions_set))
-  // io.println("-----------")
-  // io.println(draw(max_x, max_y, empty_positions))
-
-  // io.debug(#(max_x, max_y))
-  // io.println("----")
   let get_neighbors = fn(position) {
     let #(x, y) = position
     [#(x - 1, y), #(x + 1, y), #(x, y - 1), #(x, y + 1)]
@@ -89,7 +85,7 @@ fn go(all_positions, max_x, max_y, length) {
     |> list.map(fn(node) { #(1, node) })
   }
 
-  let table = dijkstra(#(0, 0), get_neighbors)
+  dijkstra(#(0, 0), get_neighbors)
 }
 
 // Ported from 2023/17/ab.py and modified to return a list of previous nodes for every node,
@@ -148,20 +144,4 @@ fn dijkstra_helper(
         }
       }
   }
-}
-
-fn draw(max_x, max_y, positions) {
-  list.range(0, max_y)
-  |> list.map(fn(y) {
-    list.range(0, max_x)
-    |> list.map(fn(x) {
-      let position = #(x, y)
-      case set.contains(positions, position) {
-        False -> "."
-        True -> "#"
-      }
-    })
-    |> string.join("")
-  })
-  |> string.join("\n")
 }
