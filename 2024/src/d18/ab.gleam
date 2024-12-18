@@ -3,6 +3,7 @@ import gleam/dict
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/pair
 import gleam/result
 import gleam/set
 import gleam/string
@@ -49,10 +50,12 @@ pub fn main() {
     })
     |> set.from_list
 
-  let assert Ok(#(part1, _)) = go(empty_positions) |> dict.get(#(max_x, max_y))
+  let assert Ok(#(part1, _)) =
+    dijkstra(#(0, 0), get_neighbors(_, empty_positions))
+    |> dict.get(#(max_x, max_y))
 
   let assert Ok(#(part2x, part2y)) =
-    search(empty_positions, rest_positions, max_x, max_y)
+    find_first_stopper(empty_positions, rest_positions, max_x, max_y)
 
   io.println("Part 1: " <> int.to_string(part1))
   io.println(
@@ -60,28 +63,22 @@ pub fn main() {
   )
 }
 
-fn go(empty_positions) {
-  let get_neighbors = fn(position) {
-    let #(x, y) = position
-    [#(x - 1, y), #(x + 1, y), #(x, y - 1), #(x, y + 1)]
-    |> list.filter(fn(node) { set.contains(empty_positions, node) })
-    |> list.map(fn(node) { #(1, node) })
-  }
-
-  dijkstra(#(0, 0), get_neighbors)
+fn get_neighbors(position, empty_positions) {
+  let #(x, y) = position
+  [#(x - 1, y), #(x + 1, y), #(x, y - 1), #(x, y + 1)]
+  |> list.filter(set.contains(empty_positions, _))
+  |> list.map(pair.new(1, _))
 }
 
-fn search(empty_positions, rest_positions, max_x, max_y) {
+fn find_first_stopper(empty_positions, rest_positions, max_x, max_y) {
   case rest_positions {
     [] -> Error(Nil)
     [first, ..rest] -> {
       let empty_positions = empty_positions |> set.delete(first)
-      let table = go(empty_positions)
+      let table = dijkstra(#(0, 0), get_neighbors(_, empty_positions))
       case dict.get(table, #(max_x, max_y)) {
-        Error(Nil) -> {
-          Ok(first)
-        }
-        Ok(_) -> search(empty_positions, rest, max_x, max_y)
+        Error(Nil) -> Ok(first)
+        Ok(_) -> find_first_stopper(empty_positions, rest, max_x, max_y)
       }
     }
   }
