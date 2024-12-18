@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option
 import gleam/order
 import gleam/set.{type Set}
+import gleamy/non_empty_list.{type NonEmptyList}
 import gleamy/priority_queue.{type Queue}
 
 // Ported from 2023/17/ab.py and modified to return a list of previous nodes for every node,
@@ -11,7 +12,7 @@ import gleamy/priority_queue.{type Queue}
 pub fn dijkstra(
   current: node,
   get_neighbors: fn(node) -> List(#(Int, node)),
-) -> Dict(node, #(Int, List(node))) {
+) -> Dict(node, #(Int, NonEmptyList(node))) {
   dijkstra_helper(
     get_neighbors,
     dict.new(),
@@ -22,10 +23,10 @@ pub fn dijkstra(
 
 fn dijkstra_helper(
   get_neighbors: fn(node) -> List(#(Int, node)),
-  table: Dict(node, #(Int, List(node))),
+  table: Dict(node, #(Int, NonEmptyList(node))),
   visited: Set(node),
   queue: Queue(#(Int, node)),
-) -> Dict(node, #(Int, List(node))) {
+) -> Dict(node, #(Int, NonEmptyList(node))) {
   case priority_queue.pop(queue) {
     Error(Nil) -> table
     Ok(#(#(current_cost, current), rest_queue)) ->
@@ -43,11 +44,14 @@ fn dijkstra_helper(
                   case maybe_previous {
                     option.Some(previous) ->
                       case int.compare(cost, previous.0) {
-                        order.Lt -> #(cost, [current])
-                        order.Eq -> #(cost, [current, ..previous.1])
+                        order.Lt -> #(cost, non_empty_list.End(current))
+                        order.Eq -> #(
+                          cost,
+                          non_empty_list.Next(current, previous.1),
+                        )
                         order.Gt -> previous
                       }
-                    option.None -> #(cost, [current])
+                    option.None -> #(cost, non_empty_list.End(current))
                   }
                 }),
                 priority_queue.push(queue, #(cost, node)),

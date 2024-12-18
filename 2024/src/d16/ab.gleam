@@ -6,6 +6,7 @@ import gleam/io
 import gleam/list
 import gleam/set.{type Set}
 import gleam/string
+import gleamy/non_empty_list.{type NonEmptyList}
 import line_parser
 
 type InputChar {
@@ -118,15 +119,17 @@ pub fn main() {
 
 fn get_full_path(
   acc: Set(node),
-  table: Dict(node, #(Int, List(node))),
+  table: Dict(node, #(Int, NonEmptyList(node))),
   node: node,
 ) -> Set(node) {
   case dict.get(table, node) {
     Error(Nil) -> set.insert(acc, node)
     Ok(#(_, previous_nodes)) ->
-      list.fold(previous_nodes, set.insert(acc, node), fn(acc, previous_node) {
-        get_full_path(acc, table, previous_node)
-      })
+      non_empty_list.fold(
+        previous_nodes,
+        set.insert(acc, node),
+        fn(acc, previous_node) { get_full_path(acc, table, previous_node) },
+      )
   }
 }
 
