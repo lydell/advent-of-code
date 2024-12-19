@@ -1,5 +1,7 @@
+import gleam/int
 import gleam/io
 import gleam/list
+import gleam/order
 import gleam/pair
 import gleam/string
 import line_parser
@@ -12,9 +14,23 @@ pub fn main() {
     )
     |> pair.map_first(list.flatten)
 
+  let simplified_towels =
+    available_towels
+    |> list.sort(fn(a, b) {
+      int.compare(string.length(a), string.length(b))
+      |> order.break_tie(string.compare(a, b))
+    })
+    |> list.fold([], fn(acc, towel) {
+      case get_working_towel_sequences(towel, acc) {
+        [] -> [towel, ..acc]
+        _ -> acc
+      }
+    })
+    |> list.reverse
+
   patterns
   |> list.count(fn(pattern) {
-    case get_working_towel_sequences(pattern, available_towels) {
+    case get_working_towel_sequences(pattern, simplified_towels) {
       [] -> False
       _ -> True
     }
