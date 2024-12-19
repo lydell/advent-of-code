@@ -14,6 +14,11 @@ pub fn main() {
     )
     |> pair.map_first(list.flatten)
 
+  // If we have `b`, there’s no need to ever bother with `bb` – we can just
+  // use two `b` instead, since part 1 is all about checking if the patterns
+  // are _possible._
+  // This sorts the shorter (fewer stripes) towels first, and then rejects
+  // towels which can be made from other towels we’ve already gone through so far.
   let simplified_towels =
     available_towels
     |> list.sort(fn(a, b) {
@@ -38,6 +43,9 @@ pub fn main() {
   |> io.debug
 }
 
+// This is the naive, brute force solution. It generates all the possible arrangements.
+// It is too slow to ever finish, though, which we have `simplified_towels` above.
+// ab.gleam solves both parts, but it was fun keeping this more naive part 1 solution as well.
 fn get_working_towel_sequences(
   pattern: String,
   available_towels: List(String),

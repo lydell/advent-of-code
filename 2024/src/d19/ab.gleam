@@ -10,19 +10,27 @@ pub fn main() {
   let #(available_towels, patterns) =
     line_parser.parse_stdin_two_sections(
       fn(line) { Ok(string.split(line, ", ")) },
-      fn(line) { Ok(line) },
+      Ok,
     )
     |> pair.map_first(list.flatten)
 
-  patterns
-  |> list.map(fn(pattern) {
-    count_working_towel_sequences(pattern, available_towels, dict.new())
-    |> pair.first
-  })
-  |> int.sum
-  |> io.debug
+  let counts =
+    list.map(patterns, fn(pattern) {
+      count_working_towel_sequences(pattern, available_towels, dict.new())
+      |> pair.first
+    })
+
+  let part1 = list.count(counts, fn(count) { count != 0 })
+  let part2 = int.sum(counts)
+
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println("Part 2: " <> int.to_string(part2))
 }
 
+// For `bbwrg`, choosing both `b`+`b` and `bb` at the start results in having
+// to do `wrg` next. We memoize the result for `wrg` so we only need to compute
+// it once. This happens a lot – lots of different variations ends up with a
+// remaining pattern that we already know how many ways there are to make.
 fn count_working_towel_sequences(
   pattern: String,
   available_towels: List(String),
