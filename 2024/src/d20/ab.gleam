@@ -52,6 +52,21 @@ pub fn main() {
   let max_x = set.fold(walls, 0, fn(max, position) { int.max(max, position.0) })
   let max_y = set.fold(walls, 0, fn(max, position) { int.max(max, position.1) })
 
+  let part1 =
+    run(
+      walls:,
+      current_position: start_position,
+      visited: set.new(),
+      pending_cheats: dict.new(),
+      at_least: case set.size(walls) < 1000 {
+        True -> 0
+        False -> 100
+      },
+      max_cheat: 2,
+      max_x:,
+      max_y:,
+    )
+
   let part2 =
     run(
       walls:,
@@ -62,14 +77,14 @@ pub fn main() {
         True -> 50
         False -> 100
       },
+      max_cheat: 20,
       max_x:,
       max_y:,
     )
 
-  io.println(int.to_string(part2))
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println("Part 2: " <> int.to_string(part2))
 }
-
-const max_cheat = 20
 
 fn run(
   walls walls: Set(Position),
@@ -77,6 +92,7 @@ fn run(
   visited visited: Set(Position),
   pending_cheats pending_cheats: Dict(Position, List(Int)),
   at_least at_least: Int,
+  max_cheat max_cheat: Int,
   max_x max_x: Int,
   max_y max_y: Int,
 ) -> Int {
@@ -136,6 +152,7 @@ fn run(
         visited:,
         pending_cheats:,
         at_least:,
+        max_cheat:,
         max_x:,
         max_y:,
       )
