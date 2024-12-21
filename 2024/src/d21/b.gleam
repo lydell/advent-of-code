@@ -4,7 +4,6 @@ import gleam/function
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/pair
 import gleam/string
 import line_parser
 
@@ -66,20 +65,19 @@ pub fn main() {
       },
     )
   })
-  |> list.fold(#([], dict.new()), fn(tuple, code) {
-    let #(acc, cache) = tuple
+  |> list.map(fn(code) {
     // The codes always end with A, so we don't need to keep state between codes.
-    let #(state, cache) =
+    let #(state, _) =
       go(
         State(
           numpad_robot: NA,
-          keypad_robots: list.repeat(KA, 2)
+          keypad_robots: list.repeat(KA, 25)
             |> list.index_map(fn(key, index) { #(index, key) })
             |> dict.from_list,
           presses: 0,
           code:,
         ),
-        cache,
+        dict.new(),
       )
 
     let min_presses = state.presses
@@ -93,9 +91,8 @@ pub fn main() {
 
     io.debug(#(code, min_presses, numeric_part_of_code))
 
-    #([min_presses * numeric_part_of_code, ..acc], cache)
+    min_presses * numeric_part_of_code
   })
-  |> pair.first
   |> int.sum
   |> io.debug
 
@@ -116,17 +113,14 @@ fn go(state: State, cache: Cache) -> #(State, Cache) {
         TwoDirections(first, second) ->
           press_key_on_keypad_robot_twice(state, cache, first, second, 0)
         TwoDirectionsReversible(first, second) -> {
-          let #(a, cache) =
+          let #(a, cache_a) =
             press_key_on_keypad_robot_twice(state, cache, first, second, 0)
-          let #(b, cache) =
+          let #(b, cache_b) =
             press_key_on_keypad_robot_twice(state, cache, second, first, 0)
-          #(
-            case a.presses < b.presses {
-              True -> a
-              False -> b
-            },
-            cache,
-          )
+          case a.presses < b.presses {
+            True -> #(a, cache_a)
+            False -> #(b, cache_b)
+          }
         }
       }
 
@@ -242,7 +236,7 @@ fn press_key_on_keypad_robot(
               )
             }
             TwoDirectionsReversible(first, second) -> {
-              let #(a, cache) =
+              let #(a, cache_a) =
                 press_key_on_keypad_robot_twice(
                   state,
                   cache,
@@ -251,7 +245,7 @@ fn press_key_on_keypad_robot(
                   robot_index + 1,
                 )
 
-              let #(b, cache) =
+              let #(b, cache_b) =
                 press_key_on_keypad_robot_twice(
                   state,
                   cache,
@@ -260,13 +254,10 @@ fn press_key_on_keypad_robot(
                   robot_index + 1,
                 )
 
-              #(
-                case a.presses < b.presses {
-                  True -> a
-                  False -> b
-                },
-                cache,
-              )
+              case a.presses < b.presses {
+                True -> #(a, cache_a)
+                False -> #(b, cache_b)
+              }
             }
           }
 
