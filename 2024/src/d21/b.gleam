@@ -4,6 +4,7 @@ import gleam/function
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/pair
 import gleam/string
 import line_parser
 
@@ -38,6 +39,9 @@ type State {
   )
 }
 
+type Cache =
+  Dict(#(Numpad, Dict(Int, Keypad), List(Numpad)), State)
+
 pub fn main() {
   line_parser.parse_stdin(fn(line) {
     line_parser.parse_general(
@@ -62,17 +66,21 @@ pub fn main() {
       },
     )
   })
-  |> list.map(fn(code) {
+  |> list.fold(#([], dict.new()), fn(tuple, code) {
+    let #(acc, cache) = tuple
     // The codes always end with A, so we don't need to keep state between codes.
-    let state =
-      go(State(
-        numpad_robot: NA,
-        keypad_robots: list.repeat(KA, 25)
-          |> list.index_map(fn(key, index) { #(index, key) })
-          |> dict.from_list,
-        presses: 0,
-        code:,
-      ))
+    let #(state, cache) =
+      go(
+        State(
+          numpad_robot: NA,
+          keypad_robots: list.repeat(KA, 2)
+            |> list.index_map(fn(key, index) { #(index, key) })
+            |> dict.from_list,
+          presses: 0,
+          code:,
+        ),
+        cache,
+      )
 
     let min_presses = state.presses
 
@@ -83,141 +91,200 @@ pub fn main() {
       |> string.join("")
       |> int.parse
 
-    io.debug(#(code, min_presses, numeric_part_of_code, state))
+    io.debug(#(code, min_presses, numeric_part_of_code))
 
-    min_presses * numeric_part_of_code
+    #([min_presses * numeric_part_of_code, ..acc], cache)
   })
+  |> pair.first
   |> int.sum
   |> io.debug
 
   Nil
 }
 
-fn go(state: State) -> State {
+fn go(state: State, cache: Cache) -> #(State, Cache) {
   case state.code {
-    [] -> state
+    [] -> #(state, cache)
     [num, ..rest] -> {
       // Move the numpad robot into place.
-      let state = case presses_needed_for_numpad(state.numpad_robot, num) {
-        NoPressesNeeded -> state
+      let #(state, cache) = case
+        presses_needed_for_numpad(state.numpad_robot, num)
+      {
+        NoPressesNeeded -> #(state, cache)
         OneDirection(#(key, times)) ->
-          press_key_on_keypad_robot(state, key, times, 0)
-        TwoDirections(#(key1, times1), #(key2, times2)) ->
-          state
-          |> press_key_on_keypad_robot(key1, times1, 0)
-          |> press_key_on_keypad_robot(key2, times2, 0)
-        TwoDirectionsReversible(#(key1, times1), #(key2, times2)) -> {
-          let a =
-            state
-            |> press_key_on_keypad_robot(key1, times1, 0)
-            |> press_key_on_keypad_robot(key2, times2, 0)
-          let b =
-            state
-            |> press_key_on_keypad_robot(key2, times2, 0)
-            |> press_key_on_keypad_robot(key1, times1, 0)
-          case a.presses < b.presses {
-            True -> a
-            False -> b
-          }
+          press_key_on_keypad_robot(state, cache, key, times, 0)
+        TwoDirections(first, second) ->
+          press_key_on_keypad_robot_twice(state, cache, first, second, 0)
+        TwoDirectionsReversible(first, second) -> {
+          let #(a, cache) =
+            press_key_on_keypad_robot_twice(state, cache, first, second, 0)
+          let #(b, cache) =
+            press_key_on_keypad_robot_twice(state, cache, second, first, 0)
+          #(
+            case a.presses < b.presses {
+              True -> a
+              False -> b
+            },
+            cache,
+          )
         }
       }
 
       // Activate the numpad robot.
-      let state =
-        press_key_on_keypad_robot(State(..state, numpad_robot: num), KA, 1, 0)
+      let #(state, cache) =
+        press_key_on_keypad_robot(
+          State(..state, numpad_robot: num),
+          cache,
+          KA,
+          1,
+          0,
+        )
 
       // Press next part of the code.
-      go(State(..state, code: rest))
+      go(State(..state, code: rest), cache)
     }
   }
 }
 
+fn press_key_on_keypad_robot_twice(
+  state: State,
+  cache: Cache,
+  first: #(Keypad, Int),
+  second: #(Keypad, Int),
+  robot_index: Int,
+) -> #(State, Cache) {
+  let #(state, cache) =
+    press_key_on_keypad_robot(state, cache, first.0, first.1, robot_index)
+  press_key_on_keypad_robot(state, cache, second.0, second.1, robot_index)
+}
+
 fn press_key_on_keypad_robot(
   state: State,
+  cache: Cache,
   key: Keypad,
   times: Int,
   robot_index: Int,
-) -> State {
-  let penultimate_index = dict.size(state.keypad_robots) - 2
-  let assert Ok(robot) = dict.get(state.keypad_robots, robot_index)
-
-  case robot_index == penultimate_index {
-    True -> {
-      // Move keypad robot in place.
-      let state = case presses_needed_for_keypad(robot, key) {
-        NoPressesNeeded -> state
-        OneDirection(#(key, times)) ->
-          press_key_on_final_keypad_robot(state, key, times)
-        TwoDirections(#(key1, times1), #(key2, times2)) ->
-          state
-          |> press_key_on_final_keypad_robot(key1, times1)
-          |> press_key_on_final_keypad_robot(key2, times2)
-        TwoDirectionsReversible(#(key1, times1), #(key2, times2)) -> {
-          let a =
-            state
-            |> press_key_on_final_keypad_robot(key1, times1)
-            |> press_key_on_final_keypad_robot(key2, times2)
-
-          let b =
-            state
-            |> press_key_on_final_keypad_robot(key2, times2)
-            |> press_key_on_final_keypad_robot(key1, times1)
-
-          case a.presses < b.presses {
-            True -> a
-            False -> b
-          }
-        }
-      }
-
-      // Activate keypad robot.
-      press_key_on_final_keypad_robot(
-        State(
-          ..state,
-          keypad_robots: dict.insert(state.keypad_robots, robot_index, key),
-        ),
-        KA,
-        times,
-      )
+) -> #(State, Cache) {
+  let cache_key = #(state.numpad_robot, state.keypad_robots, state.code)
+  case dict.get(cache, cache_key) {
+    Ok(state) -> {
+      #(state, cache)
     }
-    False -> {
-      // Move keypad robot in place.
-      let state = case presses_needed_for_keypad(robot, key) {
-        NoPressesNeeded -> state
-        OneDirection(#(key, times)) ->
-          press_key_on_keypad_robot(state, key, times, robot_index + 1)
-        TwoDirections(#(key1, times1), #(key2, times2)) ->
-          state
-          |> press_key_on_keypad_robot(key1, times1, robot_index + 1)
-          |> press_key_on_keypad_robot(key2, times2, robot_index + 1)
-        TwoDirectionsReversible(#(key1, times1), #(key2, times2)) -> {
-          let a =
-            state
-            |> press_key_on_keypad_robot(key1, times1, robot_index + 1)
-            |> press_key_on_keypad_robot(key2, times2, robot_index + 1)
+    Error(Nil) -> {
+      let penultimate_index = dict.size(state.keypad_robots) - 2
+      let assert Ok(robot) = dict.get(state.keypad_robots, robot_index)
 
-          let b =
-            state
-            |> press_key_on_keypad_robot(key2, times2, robot_index + 1)
-            |> press_key_on_keypad_robot(key1, times1, robot_index + 1)
+      let #(state, cache) = case robot_index == penultimate_index {
+        True -> {
+          // Move keypad robot in place.
+          let state = case presses_needed_for_keypad(robot, key) {
+            NoPressesNeeded -> state
+            OneDirection(#(key, times)) ->
+              press_key_on_final_keypad_robot(state, key, times)
+            TwoDirections(#(key1, times1), #(key2, times2)) ->
+              state
+              |> press_key_on_final_keypad_robot(key1, times1)
+              |> press_key_on_final_keypad_robot(key2, times2)
+            TwoDirectionsReversible(#(key1, times1), #(key2, times2)) -> {
+              let a =
+                state
+                |> press_key_on_final_keypad_robot(key1, times1)
+                |> press_key_on_final_keypad_robot(key2, times2)
 
-          case a.presses < b.presses {
-            True -> a
-            False -> b
+              let b =
+                state
+                |> press_key_on_final_keypad_robot(key2, times2)
+                |> press_key_on_final_keypad_robot(key1, times1)
+
+              case a.presses < b.presses {
+                True -> a
+                False -> b
+              }
+            }
           }
+
+          // Activate keypad robot.
+          #(
+            press_key_on_final_keypad_robot(
+              State(
+                ..state,
+                keypad_robots: dict.insert(
+                  state.keypad_robots,
+                  robot_index,
+                  key,
+                ),
+              ),
+              KA,
+              times,
+            ),
+            cache,
+          )
+        }
+        False -> {
+          // Move keypad robot in place.
+          let #(state, cache) = case presses_needed_for_keypad(robot, key) {
+            NoPressesNeeded -> #(state, cache)
+            OneDirection(#(key, times)) ->
+              press_key_on_keypad_robot(
+                state,
+                cache,
+                key,
+                times,
+                robot_index + 1,
+              )
+            TwoDirections(first, second) -> {
+              press_key_on_keypad_robot_twice(
+                state,
+                cache,
+                first,
+                second,
+                robot_index + 1,
+              )
+            }
+            TwoDirectionsReversible(first, second) -> {
+              let #(a, cache) =
+                press_key_on_keypad_robot_twice(
+                  state,
+                  cache,
+                  first,
+                  second,
+                  robot_index + 1,
+                )
+
+              let #(b, cache) =
+                press_key_on_keypad_robot_twice(
+                  state,
+                  cache,
+                  second,
+                  first,
+                  robot_index + 1,
+                )
+
+              #(
+                case a.presses < b.presses {
+                  True -> a
+                  False -> b
+                },
+                cache,
+              )
+            }
+          }
+
+          // Activate keypad robot.
+          press_key_on_keypad_robot(
+            State(
+              ..state,
+              keypad_robots: dict.insert(state.keypad_robots, robot_index, key),
+            ),
+            cache,
+            KA,
+            times,
+            robot_index + 1,
+          )
         }
       }
 
-      // Activate keypad robot.
-      press_key_on_keypad_robot(
-        State(
-          ..state,
-          keypad_robots: dict.insert(state.keypad_robots, robot_index, key),
-        ),
-        KA,
-        times,
-        robot_index + 1,
-      )
+      #(state, dict.insert(cache, cache_key, state))
     }
   }
 }
