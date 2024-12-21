@@ -64,9 +64,10 @@ pub fn main() {
   })
   |> list.map(fn(code) {
     // The codes always end with A, so we don't need to keep state between codes.
-    let min_presses = case
+    let states =
       go(State(robot1: NA, robot2: KA, robot3: KA, presses: [], code:))
-    {
+
+    let min_presses = case states {
       [] -> panic as "empty list of ways to do the code"
       [first, ..rest] ->
         list.fold(rest, list.length(first.presses), fn(min, state) {
@@ -80,6 +81,13 @@ pub fn main() {
       |> list.map(int.to_string)
       |> string.join("")
       |> int.parse
+
+    io.debug(#(
+      code,
+      min_presses,
+      numeric_part_of_code,
+      list.map(states, fn(state) { list.length(state.presses) }),
+    ))
 
     min_presses * numeric_part_of_code
   })
@@ -180,6 +188,22 @@ type PressesNeeded {
   TwoDirectionsReversible(#(Keypad, Int), #(Keypad, Int))
 }
 
+fn numpad_grid() {
+  [
+    #(#(0, 0), N7),
+    #(#(1, 0), N8),
+    #(#(2, 0), N9),
+    #(#(0, 1), N4),
+    #(#(1, 1), N5),
+    #(#(2, 1), N6),
+    #(#(0, 2), N1),
+    #(#(1, 2), N2),
+    #(#(2, 2), N3),
+    #(#(1, 3), N0),
+    #(#(2, 3), NA),
+  ]
+}
+
 // +---+---+---+
 // | 7 | 8 | 9 |
 // +---+---+---+
@@ -190,19 +214,19 @@ type PressesNeeded {
 //     | 0 | A |
 //     +---+---+
 fn presses_needed_for_numpad(from: Numpad, to: Numpad) -> PressesNeeded {
-  case from {
+  let result = case from {
     NA ->
       case to {
         NA -> NoPressesNeeded
         N0 -> OneDirection(#(KLeft, 1))
         N1 -> TwoDirections(#(KUp, 1), #(KLeft, 2))
-        N2 -> TwoDirections(#(KUp, 1), #(KLeft, 1))
+        N2 -> TwoDirectionsReversible(#(KUp, 1), #(KLeft, 1))
         N3 -> OneDirection(#(KUp, 1))
         N4 -> TwoDirections(#(KUp, 2), #(KLeft, 2))
         N5 -> TwoDirections(#(KUp, 2), #(KLeft, 1))
         N6 -> OneDirection(#(KUp, 2))
         N7 -> TwoDirections(#(KUp, 3), #(KLeft, 2))
-        N8 -> TwoDirections(#(KUp, 3), #(KLeft, 1))
+        N8 -> TwoDirectionsReversible(#(KUp, 3), #(KLeft, 1))
         N9 -> OneDirection(#(KUp, 3))
       }
     N0 ->
@@ -346,6 +370,62 @@ fn presses_needed_for_numpad(from: Numpad, to: Numpad) -> PressesNeeded {
         N9 -> NoPressesNeeded
       }
   }
+
+  let grid = numpad_grid()
+
+  let assert Ok(#(from_position, _)) =
+    grid
+    |> list.find(fn(tuple) { tuple.1 == from })
+
+  let to_position = case result {
+    NoPressesNeeded -> from_position
+    OneDirection(#(key, times)) -> apply_key(from_position, key, times)
+    TwoDirections(#(key1, times1), #(key2, times2)) -> {
+      let corner = from_position |> apply_key(key2, times2)
+      let _ = case grid |> list.find(fn(tuple) { tuple.0 == corner }) {
+        Error(Nil) -> Nil
+        Ok(_) -> {
+          io.println(
+            "from: " <> string.inspect(from) <> ", to: " <> string.inspect(to),
+          )
+          panic as "should have been TwoDirectionsReversible"
+        }
+      }
+      from_position |> apply_key(key1, times1) |> apply_key(key2, times2)
+    }
+    TwoDirectionsReversible(#(key1, times1), #(key2, times2)) ->
+      from_position |> apply_key(key1, times1) |> apply_key(key2, times2)
+  }
+
+  let assert Ok(#(_, to2)) =
+    grid
+    |> list.find(fn(tuple) { tuple.0 == to_position })
+
+  case to == to2 {
+    True -> result
+    False -> panic as "got em"
+  }
+}
+
+fn apply_key(position: #(Int, Int), key: Keypad, times: Int) -> #(Int, Int) {
+  let #(x, y) = position
+  case key {
+    KA -> panic as "apply_key A"
+    KDown -> #(x, y + times)
+    KLeft -> #(x - times, y)
+    KRight -> #(x + times, y)
+    KUp -> #(x, y - times)
+  }
+}
+
+fn keypad_grid() {
+  [
+    #(#(1, 0), KUp),
+    #(#(2, 0), KA),
+    #(#(0, 1), KLeft),
+    #(#(1, 1), KDown),
+    #(#(2, 1), KRight),
+  ]
 }
 
 //     +---+---+
@@ -354,7 +434,7 @@ fn presses_needed_for_numpad(from: Numpad, to: Numpad) -> PressesNeeded {
 // | < | v | > |
 // +---+---+---+
 fn presses_needed_for_keypad(from: Keypad, to: Keypad) -> PressesNeeded {
-  case from {
+  let result = case from {
     KLeft ->
       case to {
         KLeft -> NoPressesNeeded
@@ -395,6 +475,30 @@ fn presses_needed_for_keypad(from: Keypad, to: Keypad) -> PressesNeeded {
         KUp -> OneDirection(#(KLeft, 1))
         KA -> NoPressesNeeded
       }
+  }
+
+  let grid = keypad_grid()
+
+  let assert Ok(#(from_position, _)) =
+    grid
+    |> list.find(fn(tuple) { tuple.1 == from })
+
+  let to_position = case result {
+    NoPressesNeeded -> from_position
+    OneDirection(#(key, times)) -> apply_key(from_position, key, times)
+    TwoDirections(#(key1, times1), #(key2, times2)) ->
+      from_position |> apply_key(key1, times1) |> apply_key(key2, times2)
+    TwoDirectionsReversible(#(key1, times1), #(key2, times2)) ->
+      from_position |> apply_key(key1, times1) |> apply_key(key2, times2)
+  }
+
+  let assert Ok(#(_, to2)) =
+    grid
+    |> list.find(fn(tuple) { tuple.0 == to_position })
+
+  case to == to2 {
+    True -> result
+    False -> panic as "got em"
   }
 }
 
