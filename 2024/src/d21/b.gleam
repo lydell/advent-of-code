@@ -33,7 +33,7 @@ type State {
   State(
     numpad_robot: Numpad,
     keypad_robots: Dict(Int, Keypad),
-    presses: List(Keypad),
+    presses: Int,
     code: List(Numpad),
   )
 }
@@ -70,15 +70,15 @@ pub fn main() {
         keypad_robots: list.repeat(KA, 25)
           |> list.index_map(fn(key, index) { #(index, key) })
           |> dict.from_list,
-        presses: [],
+        presses: 0,
         code:,
       ))
 
     let min_presses = case states {
       [] -> panic as "empty list of ways to do the code"
       [first, ..rest] ->
-        list.fold(rest, list.length(first.presses), fn(min, state) {
-          int.min(min, list.length(state.presses))
+        list.fold(rest, first.presses, fn(min, state) {
+          int.min(min, state.presses)
         })
     }
 
@@ -93,7 +93,7 @@ pub fn main() {
       code,
       min_presses,
       numeric_part_of_code,
-      list.map(states, fn(state) { list.length(state.presses) }),
+      list.map(states, fn(state) { state.presses }),
     ))
 
     min_presses * numeric_part_of_code
@@ -246,23 +246,19 @@ fn press_key_on_final_keypad_robot(
 
   // Move final keypad robot in place.
   let presses = case presses_needed_for_keypad(robot, key) {
-    NoPressesNeeded -> []
-    OneDirection(#(next_key, next_times)) -> list.repeat(next_key, next_times)
-    TwoDirections(#(key1, times1), #(key2, times2)) ->
-      list.append(list.repeat(key1, times1), list.repeat(key2, times2))
-    TwoDirectionsReversible(#(key1, times1), #(key2, times2)) ->
+    NoPressesNeeded -> 0
+    OneDirection(#(_, next_times)) -> next_times
+    TwoDirections(#(_, times1), #(_, times2)) -> times1 + times2
+    TwoDirectionsReversible(#(_, times1), #(_, times2)) ->
       // Both forwards and backwards are equivalent when the human presses the button (no further dependency).
-      list.append(list.repeat(key1, times1), list.repeat(key2, times2))
+      times1 + times2
   }
 
   // Activate final keypad robot.
   State(
     ..state,
     keypad_robots: dict.insert(state.keypad_robots, final_index, key),
-    presses: list.append(
-      state.presses,
-      list.append(presses, list.repeat(KA, times)),
-    ),
+    presses: state.presses + presses + times,
   )
 }
 
