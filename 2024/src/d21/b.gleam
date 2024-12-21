@@ -64,7 +64,7 @@ pub fn main() {
   })
   |> list.map(fn(code) {
     // The codes always end with A, so we don't need to keep state between codes.
-    let states =
+    let state =
       go(State(
         numpad_robot: NA,
         keypad_robots: list.repeat(KA, 25)
@@ -74,13 +74,7 @@ pub fn main() {
         code:,
       ))
 
-    let min_presses = case states {
-      [] -> panic as "empty list of ways to do the code"
-      [first, ..rest] ->
-        list.fold(rest, first.presses, fn(min, state) {
-          int.min(min, state.presses)
-        })
-    }
+    let min_presses = state.presses
 
     let assert Ok(numeric_part_of_code) =
       code
@@ -89,12 +83,7 @@ pub fn main() {
       |> string.join("")
       |> int.parse
 
-    io.debug(#(
-      code,
-      min_presses,
-      numeric_part_of_code,
-      list.map(states, fn(state) { state.presses }),
-    ))
+    io.debug(#(code, min_presses, numeric_part_of_code, state))
 
     min_presses * numeric_part_of_code
   })
@@ -104,38 +93,41 @@ pub fn main() {
   Nil
 }
 
-fn go(state: State) -> List(State) {
+fn go(state: State) -> State {
   case state.code {
-    [] -> [state]
+    [] -> state
     [num, ..rest] -> {
       // Move the numpad robot into place.
-      let states = case presses_needed_for_numpad(state.numpad_robot, num) {
-        NoPressesNeeded -> [state]
+      let state = case presses_needed_for_numpad(state.numpad_robot, num) {
+        NoPressesNeeded -> state
         OneDirection(#(key, times)) ->
           press_key_on_keypad_robot(state, key, times, 0)
         TwoDirections(#(key1, times1), #(key2, times2)) ->
           state
           |> press_key_on_keypad_robot(key1, times1, 0)
-          |> list.flat_map(press_key_on_keypad_robot(_, key2, times2, 0))
-        TwoDirectionsReversible(#(key1, times1), #(key2, times2)) ->
-          list.append(
+          |> press_key_on_keypad_robot(key2, times2, 0)
+        TwoDirectionsReversible(#(key1, times1), #(key2, times2)) -> {
+          let a =
             state
-              |> press_key_on_keypad_robot(key1, times1, 0)
-              |> list.flat_map(press_key_on_keypad_robot(_, key2, times2, 0)),
+            |> press_key_on_keypad_robot(key1, times1, 0)
+            |> press_key_on_keypad_robot(key2, times2, 0)
+          let b =
             state
-              |> press_key_on_keypad_robot(key2, times2, 0)
-              |> list.flat_map(press_key_on_keypad_robot(_, key1, times1, 0)),
-          )
+            |> press_key_on_keypad_robot(key2, times2, 0)
+            |> press_key_on_keypad_robot(key1, times1, 0)
+          case a.presses < b.presses {
+            True -> a
+            False -> b
+          }
+        }
       }
 
       // Activate the numpad robot.
-      let states =
-        list.flat_map(states, fn(state) {
-          press_key_on_keypad_robot(State(..state, numpad_robot: num), KA, 1, 0)
-        })
+      let state =
+        press_key_on_keypad_robot(State(..state, numpad_robot: num), KA, 1, 0)
 
       // Press next part of the code.
-      list.flat_map(states, fn(state) { go(State(..state, code: rest)) })
+      go(State(..state, code: rest))
     }
   }
 }
@@ -145,93 +137,87 @@ fn press_key_on_keypad_robot(
   key: Keypad,
   times: Int,
   robot_index: Int,
-) -> List(State) {
+) -> State {
   let penultimate_index = dict.size(state.keypad_robots) - 2
   let assert Ok(robot) = dict.get(state.keypad_robots, robot_index)
 
   case robot_index == penultimate_index {
     True -> {
       // Move keypad robot in place.
-      let states = case presses_needed_for_keypad(robot, key) {
-        NoPressesNeeded -> [state]
-        OneDirection(#(key, times)) -> [
-          press_key_on_final_keypad_robot(state, key, times),
-        ]
-        TwoDirections(#(key1, times1), #(key2, times2)) -> [
+      let state = case presses_needed_for_keypad(robot, key) {
+        NoPressesNeeded -> state
+        OneDirection(#(key, times)) ->
+          press_key_on_final_keypad_robot(state, key, times)
+        TwoDirections(#(key1, times1), #(key2, times2)) ->
           state
           |> press_key_on_final_keypad_robot(key1, times1)
-          |> press_key_on_final_keypad_robot(key2, times2),
-        ]
-        TwoDirectionsReversible(#(key1, times1), #(key2, times2)) -> [
-          state
+          |> press_key_on_final_keypad_robot(key2, times2)
+        TwoDirectionsReversible(#(key1, times1), #(key2, times2)) -> {
+          let a =
+            state
             |> press_key_on_final_keypad_robot(key1, times1)
-            |> press_key_on_final_keypad_robot(key2, times2),
-          state
             |> press_key_on_final_keypad_robot(key2, times2)
-            |> press_key_on_final_keypad_robot(key1, times1),
-        ]
+
+          let b =
+            state
+            |> press_key_on_final_keypad_robot(key2, times2)
+            |> press_key_on_final_keypad_robot(key1, times1)
+
+          case a.presses < b.presses {
+            True -> a
+            False -> b
+          }
+        }
       }
 
       // Activate keypad robot.
-      list.map(states, fn(state) {
-        press_key_on_final_keypad_robot(
-          State(
-            ..state,
-            keypad_robots: dict.insert(state.keypad_robots, robot_index, key),
-          ),
-          KA,
-          times,
-        )
-      })
+      press_key_on_final_keypad_robot(
+        State(
+          ..state,
+          keypad_robots: dict.insert(state.keypad_robots, robot_index, key),
+        ),
+        KA,
+        times,
+      )
     }
     False -> {
       // Move keypad robot in place.
-      let states = case presses_needed_for_keypad(robot, key) {
-        NoPressesNeeded -> [state]
+      let state = case presses_needed_for_keypad(robot, key) {
+        NoPressesNeeded -> state
         OneDirection(#(key, times)) ->
           press_key_on_keypad_robot(state, key, times, robot_index + 1)
         TwoDirections(#(key1, times1), #(key2, times2)) ->
           state
           |> press_key_on_keypad_robot(key1, times1, robot_index + 1)
-          |> list.flat_map(press_key_on_keypad_robot(
-            _,
-            key2,
-            times2,
-            robot_index + 1,
-          ))
-        TwoDirectionsReversible(#(key1, times1), #(key2, times2)) ->
-          list.append(
+          |> press_key_on_keypad_robot(key2, times2, robot_index + 1)
+        TwoDirectionsReversible(#(key1, times1), #(key2, times2)) -> {
+          let a =
             state
-              |> press_key_on_keypad_robot(key1, times1, robot_index + 1)
-              |> list.flat_map(press_key_on_keypad_robot(
-                _,
-                key2,
-                times2,
-                robot_index + 1,
-              )),
+            |> press_key_on_keypad_robot(key1, times1, robot_index + 1)
+            |> press_key_on_keypad_robot(key2, times2, robot_index + 1)
+
+          let b =
             state
-              |> press_key_on_keypad_robot(key2, times2, robot_index + 1)
-              |> list.flat_map(press_key_on_keypad_robot(
-                _,
-                key1,
-                times1,
-                robot_index + 1,
-              )),
-          )
+            |> press_key_on_keypad_robot(key2, times2, robot_index + 1)
+            |> press_key_on_keypad_robot(key1, times1, robot_index + 1)
+
+          case a.presses < b.presses {
+            True -> a
+            False -> b
+          }
+        }
       }
 
       // Activate keypad robot.
-      list.flat_map(states, fn(state) {
-        press_key_on_keypad_robot(
-          State(
-            ..state,
-            keypad_robots: dict.insert(state.keypad_robots, robot_index, key),
-          ),
-          KA,
-          times,
-          robot_index + 1,
-        )
-      })
+      press_key_on_keypad_robot(
+        State(
+          ..state,
+          keypad_robots: dict.insert(state.keypad_robots, robot_index, key),
+        ),
+        KA,
+        times,
+        robot_index + 1,
+      )
     }
   }
 }
