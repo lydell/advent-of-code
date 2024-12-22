@@ -1,5 +1,3 @@
-// Too high: 161952
-// Too high: 236382759732736
 import gleam/dict.{type Dict}
 import gleam/function
 import gleam/int
@@ -64,8 +62,6 @@ pub fn main() {
     // The codes always end with A, so we don't need to keep state between codes.
     let #(state, _) = go(State(numpad_robot: NA, presses: 0, code:), dict.new())
 
-    let min_presses = state.presses
-
     let assert Ok(numeric_part_of_code) =
       code
       |> list.filter_map(numpad_to_int)
@@ -73,14 +69,10 @@ pub fn main() {
       |> string.join("")
       |> int.parse
 
-    io.debug(#(code, min_presses, numeric_part_of_code))
-
-    min_presses * numeric_part_of_code
+    state.presses * numeric_part_of_code
   })
   |> int.sum
   |> io.debug
-
-  Nil
 }
 
 type Cache =
@@ -211,22 +203,6 @@ type PressesNeeded {
   TwoDirectionsReversible(#(Keypad, Int), #(Keypad, Int))
 }
 
-fn numpad_grid() {
-  [
-    #(#(0, 0), N7),
-    #(#(1, 0), N8),
-    #(#(2, 0), N9),
-    #(#(0, 1), N4),
-    #(#(1, 1), N5),
-    #(#(2, 1), N6),
-    #(#(0, 2), N1),
-    #(#(1, 2), N2),
-    #(#(2, 2), N3),
-    #(#(1, 3), N0),
-    #(#(2, 3), NA),
-  ]
-}
-
 // +---+---+---+
 // | 7 | 8 | 9 |
 // +---+---+---+
@@ -237,7 +213,7 @@ fn numpad_grid() {
 //     | 0 | A |
 //     +---+---+
 fn presses_needed_for_numpad(from: Numpad, to: Numpad) -> PressesNeeded {
-  let result = case from {
+  case from {
     NA ->
       case to {
         NA -> NoPressesNeeded
@@ -393,62 +369,6 @@ fn presses_needed_for_numpad(from: Numpad, to: Numpad) -> PressesNeeded {
         N9 -> NoPressesNeeded
       }
   }
-
-  let grid = numpad_grid()
-
-  let assert Ok(#(from_position, _)) =
-    grid
-    |> list.find(fn(tuple) { tuple.1 == from })
-
-  let to_position = case result {
-    NoPressesNeeded -> from_position
-    OneDirection(#(key, times)) -> apply_key(from_position, key, times)
-    TwoDirections(#(key1, times1), #(key2, times2)) -> {
-      let corner = from_position |> apply_key(key2, times2)
-      let _ = case grid |> list.find(fn(tuple) { tuple.0 == corner }) {
-        Error(Nil) -> Nil
-        Ok(_) -> {
-          io.println(
-            "from: " <> string.inspect(from) <> ", to: " <> string.inspect(to),
-          )
-          panic as "should have been TwoDirectionsReversible"
-        }
-      }
-      from_position |> apply_key(key1, times1) |> apply_key(key2, times2)
-    }
-    TwoDirectionsReversible(#(key1, times1), #(key2, times2)) ->
-      from_position |> apply_key(key1, times1) |> apply_key(key2, times2)
-  }
-
-  let assert Ok(#(_, to2)) =
-    grid
-    |> list.find(fn(tuple) { tuple.0 == to_position })
-
-  case to == to2 {
-    True -> result
-    False -> panic as "got em"
-  }
-}
-
-fn apply_key(position: #(Int, Int), key: Keypad, times: Int) -> #(Int, Int) {
-  let #(x, y) = position
-  case key {
-    KA -> panic as "apply_key A"
-    KDown -> #(x, y + times)
-    KLeft -> #(x - times, y)
-    KRight -> #(x + times, y)
-    KUp -> #(x, y - times)
-  }
-}
-
-fn keypad_grid() {
-  [
-    #(#(1, 0), KUp),
-    #(#(2, 0), KA),
-    #(#(0, 1), KLeft),
-    #(#(1, 1), KDown),
-    #(#(2, 1), KRight),
-  ]
 }
 
 //     +---+---+
@@ -457,7 +377,7 @@ fn keypad_grid() {
 // | < | v | > |
 // +---+---+---+
 fn presses_needed_for_keypad(from: Keypad, to: Keypad) -> PressesNeeded {
-  let result = case from {
+  case from {
     KLeft ->
       case to {
         KLeft -> NoPressesNeeded
@@ -498,41 +418,6 @@ fn presses_needed_for_keypad(from: Keypad, to: Keypad) -> PressesNeeded {
         KUp -> OneDirection(#(KLeft, 1))
         KA -> NoPressesNeeded
       }
-  }
-
-  let grid = keypad_grid()
-
-  let assert Ok(#(from_position, _)) =
-    grid
-    |> list.find(fn(tuple) { tuple.1 == from })
-
-  let to_position = case result {
-    NoPressesNeeded -> from_position
-    OneDirection(#(key, times)) -> apply_key(from_position, key, times)
-    TwoDirections(#(key1, times1), #(key2, times2)) -> {
-      let corner = from_position |> apply_key(key2, times2)
-      let _ = case grid |> list.find(fn(tuple) { tuple.0 == corner }) {
-        Error(Nil) -> Nil
-        Ok(_) -> {
-          io.println(
-            "from: " <> string.inspect(from) <> ", to: " <> string.inspect(to),
-          )
-          panic as "should have been TwoDirectionsReversible"
-        }
-      }
-      from_position |> apply_key(key1, times1) |> apply_key(key2, times2)
-    }
-    TwoDirectionsReversible(#(key1, times1), #(key2, times2)) ->
-      from_position |> apply_key(key1, times1) |> apply_key(key2, times2)
-  }
-
-  let assert Ok(#(_, to2)) =
-    grid
-    |> list.find(fn(tuple) { tuple.0 == to_position })
-
-  case to == to2 {
-    True -> result
-    False -> panic as "got em"
   }
 }
 
