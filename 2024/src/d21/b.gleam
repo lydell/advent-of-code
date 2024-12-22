@@ -39,7 +39,7 @@ type State {
 }
 
 type Cache =
-  Dict(#(Numpad, Dict(Int, Keypad), List(Numpad)), State)
+  Dict(#(Keypad, Int, Dict(Int, Keypad), List(Numpad)), State)
 
 pub fn main() {
   line_parser.parse_stdin(fn(line) {
@@ -159,10 +159,33 @@ fn press_key_on_keypad_robot(
   times: Int,
   robot_index: Int,
 ) -> #(State, Cache) {
-  let cache_key = #(state.numpad_robot, state.keypad_robots, state.code)
+  let robots = case robot_index == 0 {
+    True -> state.keypad_robots
+    False ->
+      list.range(0, robot_index - 1)
+      |> list.fold(state.keypad_robots, dict.delete)
+  }
+  // let cache_key = #(state.numpad_robot, robots, state.code)
+  let cache_key = #(key, times, robots, state.code)
   case dict.get(cache, cache_key) {
-    Ok(state) -> {
-      #(state, cache)
+    Ok(new_state) -> {
+      let robots = case robot_index == 0 {
+        True -> new_state.keypad_robots
+        False ->
+          list.range(0, robot_index - 1)
+          |> list.fold(new_state.keypad_robots, fn(acc, i) {
+            let assert Ok(v) = dict.get(state.keypad_robots, i)
+            dict.insert(acc, i, v)
+          })
+      }
+      #(
+        State(
+          ..new_state,
+          numpad_robot: state.numpad_robot,
+          keypad_robots: robots,
+        ),
+        cache,
+      )
     }
     Error(Nil) -> {
       let penultimate_index = dict.size(state.keypad_robots) - 2
@@ -302,7 +325,8 @@ fn press_key_on_final_keypad_robot(
   State(
     ..state,
     keypad_robots: dict.insert(state.keypad_robots, final_index, key),
-    presses: state.presses + presses + times,
+    // This should not return the sum in order to memoize
+      presses: state.presses + presses + times,
   )
 }
 
