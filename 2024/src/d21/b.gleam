@@ -34,7 +34,7 @@ type State {
   State(numpad_robot: Numpad, presses: Int, code: List(Numpad))
 }
 
-const num_keypad_robots = 25
+const num_keypad_robots = 4
 
 pub fn main() {
   line_parser.parse_stdin(fn(line) {
@@ -503,8 +503,19 @@ fn presses_needed_for_keypad(from: Keypad, to: Keypad) -> PressesNeeded {
   let to_position = case result {
     NoPressesNeeded -> from_position
     OneDirection(#(key, times)) -> apply_key(from_position, key, times)
-    TwoDirections(#(key1, times1), #(key2, times2)) ->
+    TwoDirections(#(key1, times1), #(key2, times2)) -> {
+      let corner = from_position |> apply_key(key2, times2)
+      let _ = case grid |> list.find(fn(tuple) { tuple.0 == corner }) {
+        Error(Nil) -> Nil
+        Ok(_) -> {
+          io.println(
+            "from: " <> string.inspect(from) <> ", to: " <> string.inspect(to),
+          )
+          panic as "should have been TwoDirectionsReversible"
+        }
+      }
       from_position |> apply_key(key1, times1) |> apply_key(key2, times2)
+    }
     TwoDirectionsReversible(#(key1, times1), #(key2, times2)) ->
       from_position |> apply_key(key1, times1) |> apply_key(key2, times2)
   }
