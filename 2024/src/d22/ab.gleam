@@ -19,42 +19,58 @@ type State {
 }
 
 pub fn main() {
-  line_parser.parse_stdin(line_parser.parse_int("Number", _))
-  |> list.fold(dict.new(), fn(acc, n) {
-    let state =
+  let numbers = line_parser.parse_stdin(line_parser.parse_int("Number", _))
+
+  let part1 =
+    numbers
+    |> list.map(fn(n) {
       list.range(1, 2000)
-      |> list.fold(State(n, get_last(n), 0, 0, 0, 0, dict.new()), fn(state, i) {
-        let n = next(state.n)
-        let last = get_last(n)
-        let diff = last - state.previous_price
-        let state =
-          State(
-            n:,
-            previous_price: last,
-            a: state.b,
-            b: state.c,
-            c: state.d,
-            d: diff,
-            acc: state.acc,
-          )
-        case i >= 4 {
-          False -> state
-          True ->
-            State(
-              ..state,
-              acc: dict.upsert(
-                state.acc,
-                #(state.a, state.b, state.c, state.d),
-                option.unwrap(_, last),
-              ),
-            )
-        }
-      })
-    dict.combine(acc, state.acc, int.add)
-  })
-  |> dict.values
-  |> list.fold(0, int.max)
-  |> io.debug
+      |> list.fold(n, fn(n, _) { next(n) })
+    })
+    |> int.sum
+
+  let part2 =
+    numbers
+    |> list.fold(dict.new(), fn(acc, n) {
+      let state =
+        list.range(1, 2000)
+        |> list.fold(
+          State(n, get_last(n), 0, 0, 0, 0, dict.new()),
+          fn(state, i) {
+            let n = next(state.n)
+            let last = get_last(n)
+            let diff = last - state.previous_price
+            let state =
+              State(
+                n:,
+                previous_price: last,
+                a: state.b,
+                b: state.c,
+                c: state.d,
+                d: diff,
+                acc: state.acc,
+              )
+            case i >= 4 {
+              False -> state
+              True ->
+                State(
+                  ..state,
+                  acc: dict.upsert(
+                    state.acc,
+                    #(state.a, state.b, state.c, state.d),
+                    option.unwrap(_, last),
+                  ),
+                )
+            }
+          },
+        )
+      dict.combine(acc, state.acc, int.add)
+    })
+    |> dict.values
+    |> list.fold(0, int.max)
+
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println("Part 2: " <> int.to_string(part2))
 }
 
 fn next(n: Int) -> Int {
