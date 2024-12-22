@@ -34,7 +34,7 @@ type State {
   State(numpad_robot: Numpad, presses: Int, code: List(Numpad))
 }
 
-const num_keypad_robots = 4
+const num_keypad_robots = 25
 
 pub fn main() {
   line_parser.parse_stdin(fn(line) {
@@ -91,37 +91,33 @@ fn go(state: State, cache: Cache) -> #(State, Cache) {
     [] -> #(state, cache)
     [num, ..rest] -> {
       // Move the numpad robot into place.
-      let #(#(p1, cache), first_keypad_robot) = case
+      let #(p, cache) = case
         presses_needed_for_numpad(state.numpad_robot, num)
       {
-        NoPressesNeeded -> #(#(0, cache), KA)
-        OneDirection(#(key, times)) -> #(
-          presses(KA, key, times, num_keypad_robots, cache),
-          key,
-        )
-        TwoDirections(first, second) -> #(
-          presses_twice(KA, first, second, num_keypad_robots, cache),
-          second.0,
-        )
+        NoPressesNeeded -> press_a(#(0, cache), KA, 1, num_keypad_robots)
+        OneDirection(#(key, times)) ->
+          presses(KA, key, times, num_keypad_robots, cache)
+          |> press_a(key, 1, num_keypad_robots)
+        TwoDirections(first, second) ->
+          presses_twice(KA, first, second, num_keypad_robots, cache)
+          |> press_a(second.0, 1, num_keypad_robots)
         TwoDirectionsReversible(first, second) -> {
           let #(a, cache_a) =
             presses_twice(KA, first, second, num_keypad_robots, cache)
+            |> press_a(second.0, 1, num_keypad_robots)
           let #(b, cache_b) =
             presses_twice(KA, second, first, num_keypad_robots, cache)
+            |> press_a(first.0, 1, num_keypad_robots)
           case a < b {
-            True -> #(#(a, cache_a), second.0)
-            False -> #(#(b, cache_b), first.0)
+            True -> #(a, cache_a)
+            False -> #(b, cache_b)
           }
         }
       }
 
-      // Activate the numpad robot.
-      let #(p2, cache) =
-        presses(first_keypad_robot, KA, 1, num_keypad_robots, cache)
-
       // Press next part of the code.
       go(
-        State(numpad_robot: num, presses: state.presses + p1 + p2, code: rest),
+        State(numpad_robot: num, presses: state.presses + p, code: rest),
         cache,
       )
     }
@@ -147,37 +143,36 @@ fn presses(
       let #(result, cache) = case remaining_keypads {
         0 -> #(press_times, cache)
         _ -> {
-          let #(#(p1, cache), next) = case
+          let #(p, cache) = case
             presses_needed_for_keypad(
               current_keypad_position,
               wanted_keypad_position,
             )
           {
-            NoPressesNeeded -> #(#(0, cache), KA)
-            OneDirection(#(key, times)) -> #(
-              presses(KA, key, times, remaining_keypads - 1, cache),
-              key,
-            )
-            TwoDirections(first, second) -> #(
-              presses_twice(KA, first, second, remaining_keypads - 1, cache),
-              second.0,
-            )
+            NoPressesNeeded ->
+              press_a(#(0, cache), KA, 1, remaining_keypads - 1)
+            OneDirection(#(key, times)) ->
+              presses(KA, key, times, remaining_keypads - 1, cache)
+              |> press_a(key, press_times, remaining_keypads - 1)
+            TwoDirections(first, second) ->
+              presses_twice(KA, first, second, remaining_keypads - 1, cache)
+              |> press_a(second.0, press_times, remaining_keypads - 1)
             TwoDirectionsReversible(first, second) -> {
               let #(a, cache_a) =
                 presses_twice(KA, first, second, remaining_keypads - 1, cache)
+                |> press_a(second.0, press_times, remaining_keypads - 1)
 
               let #(b, cache_b) =
                 presses_twice(KA, second, first, remaining_keypads - 1, cache)
+                |> press_a(first.0, press_times, remaining_keypads - 1)
 
               case a < b {
-                True -> #(#(a, cache_a), second.0)
-                False -> #(#(b, cache_b), first.0)
+                True -> #(a, cache_a)
+                False -> #(b, cache_b)
               }
             }
           }
-          let #(p2, cache) =
-            presses(next, KA, press_times, remaining_keypads - 1, cache)
-          #(p1 + p2, cache)
+          #(p, cache)
         }
       }
       #(result, dict.insert(cache, cache_key, result))
@@ -195,6 +190,17 @@ fn presses_twice(
   let #(p1, cache) = presses(next, first.0, first.1, remaining_keypads, cache)
   let #(p2, cache) =
     presses(first.0, second.0, second.1, remaining_keypads, cache)
+  #(p1 + p2, cache)
+}
+
+fn press_a(
+  result: #(Int, Cache),
+  key: Keypad,
+  times: Int,
+  remaining_keypads: Int,
+) -> #(Int, Cache) {
+  let #(p1, cache) = result
+  let #(p2, cache) = presses(key, KA, times, remaining_keypads, cache)
   #(p1 + p2, cache)
 }
 
