@@ -3,7 +3,6 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option
-import gleam/result
 import line_parser
 
 type State {
@@ -34,36 +33,33 @@ pub fn main() {
     |> list.fold(dict.new(), fn(acc, n) {
       let state =
         list.range(1, 2000)
-        |> list.fold(
-          State(n, get_last(n), 0, 0, 0, 0, dict.new()),
-          fn(state, i) {
-            let n = next(state.n)
-            let last = get_last(n)
-            let diff = last - state.previous_price
-            let state =
+        |> list.fold(State(n, n % 10, 0, 0, 0, 0, dict.new()), fn(state, i) {
+          let n = next(state.n)
+          let last = n % 10
+          let diff = last - state.previous_price
+          let state =
+            State(
+              n:,
+              previous_price: last,
+              a: state.b,
+              b: state.c,
+              c: state.d,
+              d: diff,
+              acc: state.acc,
+            )
+          case i >= 4 {
+            False -> state
+            True ->
               State(
-                n:,
-                previous_price: last,
-                a: state.b,
-                b: state.c,
-                c: state.d,
-                d: diff,
-                acc: state.acc,
+                ..state,
+                acc: dict.upsert(
+                  state.acc,
+                  #(state.a, state.b, state.c, state.d),
+                  option.unwrap(_, last),
+                ),
               )
-            case i >= 4 {
-              False -> state
-              True ->
-                State(
-                  ..state,
-                  acc: dict.upsert(
-                    state.acc,
-                    #(state.a, state.b, state.c, state.d),
-                    option.unwrap(_, last),
-                  ),
-                )
-            }
-          },
-        )
+          }
+        })
       dict.combine(acc, state.acc, int.add)
     })
     |> dict.values
@@ -90,9 +86,4 @@ fn mix(a, b) {
 fn prune(a) {
   let assert Ok(r) = int.modulo(a, 16_777_216)
   r
-}
-
-fn get_last(n) {
-  let assert Ok([last, ..]) = int.digits(n, 10) |> result.map(list.reverse)
-  last
 }
