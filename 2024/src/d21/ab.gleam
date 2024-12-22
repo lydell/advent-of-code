@@ -29,50 +29,67 @@ type Keypad {
 }
 
 type State {
-  State(numpad_robot: Numpad, presses: Int, code: List(Numpad))
+  State(
+    numpad_robot: Numpad,
+    keypad_robots: Int,
+    presses: Int,
+    code: List(Numpad),
+  )
 }
 
-const num_keypad_robots = 25
-
 pub fn main() {
-  line_parser.parse_stdin(fn(line) {
-    line_parser.parse_general(
-      string.to_graphemes(line),
-      "Char",
-      function.identity,
-      fn(char) {
-        case char {
-          "0" -> Ok(N0)
-          "1" -> Ok(N1)
-          "2" -> Ok(N2)
-          "3" -> Ok(N3)
-          "4" -> Ok(N4)
-          "5" -> Ok(N5)
-          "6" -> Ok(N6)
-          "7" -> Ok(N7)
-          "8" -> Ok(N8)
-          "9" -> Ok(N9)
-          "A" -> Ok(NA)
-          _ -> Error("Unknown char")
-        }
-      },
-    )
-  })
-  |> list.map(fn(code) {
-    // The codes always end with A, so we don't need to keep state between codes.
-    let #(state, _) = go(State(numpad_robot: NA, presses: 0, code:), dict.new())
+  let codes =
+    line_parser.parse_stdin(fn(line) {
+      line_parser.parse_general(
+        string.to_graphemes(line),
+        "Char",
+        function.identity,
+        fn(char) {
+          case char {
+            "0" -> Ok(N0)
+            "1" -> Ok(N1)
+            "2" -> Ok(N2)
+            "3" -> Ok(N3)
+            "4" -> Ok(N4)
+            "5" -> Ok(N5)
+            "6" -> Ok(N6)
+            "7" -> Ok(N7)
+            "8" -> Ok(N8)
+            "9" -> Ok(N9)
+            "A" -> Ok(NA)
+            _ -> Error("Unknown char")
+          }
+        },
+      )
+    })
 
-    let assert Ok(numeric_part_of_code) =
-      code
-      |> list.filter_map(numpad_to_int)
-      |> list.map(int.to_string)
-      |> string.join("")
-      |> int.parse
+  let part1 =
+    codes
+    |> list.map(run(_, 2))
+    |> int.sum
 
-    state.presses * numeric_part_of_code
-  })
-  |> int.sum
-  |> io.debug
+  let part2 =
+    codes
+    |> list.map(run(_, 25))
+    |> int.sum
+
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println("Part 2: " <> int.to_string(part2))
+}
+
+fn run(code: List(Numpad), keypad_robots: Int) -> Int {
+  // The codes always end with A, so we don't need to keep state between codes.
+  let #(state, _) =
+    go(State(numpad_robot: NA, keypad_robots:, presses: 0, code:), dict.new())
+
+  let assert Ok(numeric_part_of_code) =
+    code
+    |> list.filter_map(numpad_to_int)
+    |> list.map(int.to_string)
+    |> string.join("")
+    |> int.parse
+
+  state.presses * numeric_part_of_code
 }
 
 type Cache =
@@ -82,34 +99,36 @@ fn go(state: State, cache: Cache) -> #(State, Cache) {
   case state.code {
     [] -> #(state, cache)
     [num, ..rest] -> {
-      // Move the numpad robot into place.
       let #(p, cache) = case
         presses_needed_for_numpad(state.numpad_robot, num)
       {
-        NoPressesNeeded -> press_a(#(0, cache), KA, 1, num_keypad_robots)
+        NoPressesNeeded -> press_a(#(0, cache), KA, 1, state.keypad_robots)
         OneDirection(#(key, times)) ->
-          presses(KA, key, times, num_keypad_robots, cache)
-          |> press_a(key, 1, num_keypad_robots)
+          presses(KA, key, times, state.keypad_robots, cache)
+          |> press_a(key, 1, state.keypad_robots)
         TwoDirections(first, second) ->
-          presses_twice(KA, first, second, num_keypad_robots, cache)
-          |> press_a(second.0, 1, num_keypad_robots)
+          presses_twice(KA, first, second, state.keypad_robots, cache)
+          |> press_a(second.0, 1, state.keypad_robots)
         TwoDirectionsReversible(first, second) -> {
           let #(a, cache_a) =
-            presses_twice(KA, first, second, num_keypad_robots, cache)
-            |> press_a(second.0, 1, num_keypad_robots)
+            presses_twice(KA, first, second, state.keypad_robots, cache)
+            |> press_a(second.0, 1, state.keypad_robots)
           let #(b, cache_b) =
-            presses_twice(KA, second, first, num_keypad_robots, cache)
-            |> press_a(first.0, 1, num_keypad_robots)
+            presses_twice(KA, second, first, state.keypad_robots, cache)
+            |> press_a(first.0, 1, state.keypad_robots)
           case a < b {
             True -> #(a, cache_a)
             False -> #(b, cache_b)
           }
         }
       }
-
-      // Press next part of the code.
       go(
-        State(numpad_robot: num, presses: state.presses + p, code: rest),
+        State(
+          numpad_robot: num,
+          keypad_robots: state.keypad_robots,
+          presses: state.presses + p,
+          code: rest,
+        ),
         cache,
       )
     }
