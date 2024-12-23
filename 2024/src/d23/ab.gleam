@@ -1,10 +1,10 @@
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option
 import gleam/result
-import gleam/set
+import gleam/set.{type Set}
 import gleam/string
 import line_parser
 
@@ -24,49 +24,31 @@ pub fn main() {
       })
     })
 
-  // connections
-  // |> dict.size
-  // |> io.debug
-  // |> dict.to_list
-  // |> list.each(fn(s) { io.println(int.to_string(set.size(s.1))) })
+  let part1 =
+    get_clusters_of_size(connections, 2)
+    |> set.filter(list.any(_, string.starts_with(_, "t")))
+    |> set.size
 
-  // list.range(3, 12)
-  // |> list.map(fn(n) {
-  //   list.range(1, 13)
-  //   |> list.combinations(n)
-  //   |> list.length
-  // })
-  // |> int.sum
-  // |> int.multiply(1054)
-  // |> io.debug
+  let longest =
+    dict.fold(connections, 0, fn(min, _, values) {
+      int.max(min, set.size(values))
+    })
 
+  let part2 = search(connections, longest) |> string.join(",")
+
+  io.println("Part 1: " <> int.to_string(part1))
+  io.println("Part 2: " <> part2)
+}
+
+fn get_clusters_of_size(
+  connections: Dict(String, Set(String)),
+  n: Int,
+) -> Set(List(String)) {
   connections
   |> dict.fold(set.new(), fn(acc, key, ids_set) {
     ids_set
     |> set.to_list
-    |> list.combination_pairs
-    |> list.filter(fn(tuple) {
-      let #(a, b) = tuple
-      case dict.get(connections, a) {
-        Error(Nil) -> panic as "not connected back"
-        Ok(ids_set) -> set.contains(ids_set, b)
-      }
-    })
-    |> list.map(fn(tuple) {
-      let #(a, b) = tuple
-      list.sort([key, a, b], string.compare)
-    })
-    |> set.from_list
-    |> set.union(acc)
-  })
-  |> set.size
-  |> io.debug
-
-  connections
-  |> dict.fold(set.new(), fn(acc, key, ids_set) {
-    ids_set
-    |> set.to_list
-    |> list.combinations(12)
+    |> list.combinations(n)
     |> list.filter(fn(items) {
       let items_set = set.from_list(items)
       list.all(items, fn(a) {
@@ -83,8 +65,16 @@ pub fn main() {
     |> set.from_list
     |> set.union(acc)
   })
-  |> set.to_list
-  |> list.map(string.join(_, ","))
-  |> string.join("\n")
-  |> io.println
+}
+
+fn search(connections: Dict(String, Set(String)), n: Int) -> List(String) {
+  let clusters = get_clusters_of_size(connections, n)
+  case set.size(clusters) {
+    0 -> search(connections, n - 1)
+    1 -> {
+      let assert [cluster] = set.to_list(clusters)
+      cluster
+    }
+    _ -> panic as "got more than one largest cluster"
+  }
 }
