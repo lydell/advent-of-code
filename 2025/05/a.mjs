@@ -1,9 +1,6 @@
 import fs from "node:fs";
 
-const [section1, section2] = fs.readFileSync(process.stdin.fd, "utf-8")
-    .trim()
-    .split("\n\n")
-    ;
+const [section1, section2] = fs.readFileSync(process.stdin.fd, "utf-8").trim().split("\n\n");
 
 const ranges = section1.split("\n").map(line => {
     const [from, to] = line.split("-");
